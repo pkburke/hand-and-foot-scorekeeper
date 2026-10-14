@@ -5,3 +5,12 @@
 .backup-actions{display:grid;grid-template-columns:1fr;gap:10px}
 .new-game-action{border-top:1px solid #e3e9e2;padding-top:16px}
 .footer-actions button{display:block;width:100%;min-width:0;text-align:center}
+
+/* v3.0.2: prevent rapid counter taps from triggering iOS double-tap zoom.
+   touch-action: manipulation still permits intentional pinch-to-zoom. */
+button, .square, .tabs button, .segments button, .progress button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Avoid Safari's automatic focus zoom on numeric/text entry. */
+input, select { font-size: 16px; }
