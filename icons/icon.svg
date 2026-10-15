@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="106" fill="#1b4e39"/><rect x="110" y="96" width="215" height="307" rx="19" fill="#f5f5e9" transform="rotate(-10 210 256)"/><rect x="189" y="110" width="211" height="302" rx="18" fill="#ffffff" stroke="#cae0d2" stroke-width="8"/><text x="294" y="255" text-anchor="middle" font-family="Arial,sans-serif" font-size="104" font-weight="bold" fill="#b8373c">H</text><text x="293" y="333" text-anchor="middle" font-family="Arial,sans-serif" font-size="68" font-weight="bold" fill="#1b4e39">&amp;F</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Hand and Foot HF monogram">
+ <defs>
+  <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e2edf5"/><stop offset="1" stop-color="#bed0df"/></linearGradient>
+  <linearGradient id="ink" x1="0" y1="0" x2="0.85" y2="1"><stop stop-color="#07779a"/><stop offset="1" stop-color="#003c62"/></linearGradient>
+  <filter id="shadow" x="-25%" y="-25%" width="160%" height="170%"><feGaussianBlur stdDeviation="13"/></filter>
+ </defs>
+ <rect x="60" y="60" width="904" height="904" rx="126" fill="url(#tile)"/>
+ <!-- H/F monogram: equal 100-unit crossbar and F-stroke thickness. -->
+ <path id="hf" d="M275 205 H395 V410 H505 V205 H625 V410 H800 Q815 410 815 425 V495 Q815 510 800 510 H625 V570 H800 Q815 570 815 585 V655 Q815 670 800 670 H625 V825 H505 V510 H395 V745 H275 Z"/>
+ <use href="#hf" transform="translate(17 20)" fill="#29435c" opacity=".24" filter="url(#shadow)"/>
+ <use href="#hf" transform="translate(-11 1)" fill="#00e6e8"/>
+ <use href="#hf" transform="translate(12 5)" fill="#f326e8"/>
+ <use href="#hf" fill="url(#ink)"/>
+</svg>
