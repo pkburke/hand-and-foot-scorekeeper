@@ -1,1 +1,1 @@
-v3.1 TEST BRANCH ONLY (feature/v3.1). Replace icons/icon.svg and icon-180.png, icon-192.png, icon-512.png, along with index.html and sw.js. SVG is a vector recreation of the updated glitch HF design; PNGs preserve the image-generated logo. Do not change main.
+Upload these files to feature/v3.1: icons/icon.svg, icons/icon-180.png, icons/icon-192.png, icons/icon-512.png, index.html, and sw.js. Then reinstall the test PWA to refresh the Home Screen icon.
