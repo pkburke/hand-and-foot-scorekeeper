@@ -1,1 +1,1 @@
-Replace the icons/icon-180.png, icons/icon-192.png, icons/icon-512.png files in the feature/v3.1 branch, plus replace index.html and sw.js to ensure the new icon is used and the cache is refreshed.
+v3.1 TEST BRANCH ONLY (feature/v3.1). Replace icons/icon.svg and icon-180.png, icon-192.png, icon-512.png, along with index.html and sw.js. SVG is a vector recreation of the updated glitch HF design; PNGs preserve the image-generated logo. Do not change main.
