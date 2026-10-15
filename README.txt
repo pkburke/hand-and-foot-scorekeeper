@@ -1,0 +1,1 @@
+Replace the icons/icon-180.png, icons/icon-192.png, icons/icon-512.png files in the feature/v3.1 branch, plus replace index.html and sw.js to ensure the new icon is used and the cache is refreshed.
