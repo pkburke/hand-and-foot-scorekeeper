@@ -1,1 +1,1 @@
-Upload these files to feature/v3.1: icons/icon.svg, icons/icon-180.png, icons/icon-192.png, icons/icon-512.png, index.html, and sw.js. Then reinstall the test PWA to refresh the Home Screen icon.
+Release-polish update ONLY for branch feature/v3.1. Replace app.mjs, styles.css, and sw.js at repository root. Keep corrected icon files unchanged. Confirm Cloudflare deployment and test 2-, 4-, and 6-player Scoreboard, name edits, history/share actions, and round navigation before merging to main.
