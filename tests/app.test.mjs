@@ -48,7 +48,7 @@ test('Corrupt saved game is preserved for recovery and cannot crash startup',()=
 
 test('Malformed saved history and name sets are preserved without breaking the scoreboard',()=>{
   const storage=memoryStorage({[KEYS.archive]:'[null]',[KEYS.presets]:'{}'}),app=appHarness(null,{storage});
-  app.click('go-board');app.click('library');assert.match(app.app.innerHTML,/Game history/);
+  app.click('go-board');app.click('library');assert.match(app.app.innerHTML,/Your games/);
   assert.equal(storage.getItem(KEYS.archive+'-recovery'),'[null]');assert.equal(storage.getItem(KEYS.presets+'-recovery'),'{}');
 });
 
@@ -60,7 +60,7 @@ test('Recovery does not overwrite an earlier corrupt-data backup',()=>{
 test('Unavailable storage shows a save warning and prevents destructive reset when archiving fails',()=>{
   const game=freshGame();game.rounds=[roundFor([100,0])];const app=appHarness(game);
   app.storage.setItem=()=>{throw Error('Quota exceeded')};app.click('go-board');assert.match(app.node('[data-save-status]').textContent,/could not be saved/i);
-  app.click('new-game');app.click('confirm');assert.equal(app.api.state().rounds.length,1);assert.match(app.alerts.at(-1),/could not be archived/);
+  app.click('new-game');app.click('confirm');assert.equal(app.api.state().rounds.length,1);assert.match(app.alerts.at(-1),/could not be saved/);
 });
 
 test('If corrupt saved data cannot be preserved, it is not overwritten',()=>{

@@ -1,5 +1,5 @@
-const CACHE='hand-foot-v3-1-rc-bugfix-4';
-const FILES=['./','./index.html','./styles.css','./app.mjs','./scoring.mjs','./data.mjs','./manifest.webmanifest','./icons/icon.svg','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='hand-foot-v3-2-dev-3';
+const FILES=['./','./index.html','./styles.css','./app.mjs','./scoring.mjs','./data.mjs','./games.mjs','./manifest.webmanifest','./icons/icon.svg','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting()));
 });
