@@ -3,6 +3,7 @@ import {KEYS,validateGame,validateArchive,validatePresets,validateLibrary,valida
 import {activeGame,makeLibrary,saveActive,addGame,openGame,renameGame,archiveForLibrary,mergeBackup} from './games.mjs';
 const KEY=KEYS.game,ARCHIVE_KEY=KEYS.archive,PRESETS_KEY=KEYS.presets;
 const undoStack=[];let storageWarning='',recoveryNotice='',recoveryBlocked=false;
+let numericEdit=null;
 let state=load();
 let library=readSaved(KEYS.games,null,validateLibrary)??makeLibrary(state,storeGet(ARCHIVE_KEY,[]));
 state=structuredClone(activeGame(library).game);
@@ -32,7 +33,13 @@ function storePut(key,value){
   try{localStorage.setItem(key,JSON.stringify(value));if(key===KEY)storageWarning='';updateSaveStatus();return true}
   catch{storageWarning='Changes could not be saved on this device. Export a backup to keep your scores.';updateSaveStatus();return false}
 }
-function remember(){undoStack.push(JSON.stringify({draft:state.draft,completed:state.completed,out:state.out,method:state.method,active:state.active,step:state.step}));if(undoStack.length>20)undoStack.shift()}
+function remember(input=null){
+  // Keep autosaving each keystroke, but undo a whole numeric-field edit at once.
+  if(input&&numericEdit===input)return;
+  numericEdit=input;
+  undoStack.push(JSON.stringify({draft:state.draft,completed:state.completed,out:state.out,method:state.method,active:state.active,step:state.step}));
+  if(undoStack.length>20)undoStack.shift();
+}
 function commitLibrary(next,includeArchive=false){
   if(recoveryBlocked)return false;
   try{
@@ -63,7 +70,8 @@ function icon(name){
     score:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 11h1M15 11h1M8 15h1M15 15h1M8 19h1M15 19h1"/>',
     board:'<path d="M4 21h16M7 17V9M12 17V3M17 17v-5"/>',
     rules:'<path d="M12 5c-3-2-6-2-10-1v15c4-1 7-1 10 1 3-2 6-2 10-1V4c-4-1-7-1-10 1Zm0 0v15"/>',
-    settings:'<path d="M3 6h7M14 6h7M3 18h11M18 18h3"/><circle cx="12" cy="6" r="2"/><circle cx="16" cy="18" r="2"/>'
+    settings:'<path d="M3 6h7M14 6h7M3 18h11M18 18h3"/><circle cx="12" cy="6" r="2"/><circle cx="16" cy="18" r="2"/>',
+    trophy:'<path d="M8 3h8v5a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 12v6M8 21h8M10 18h4v3h-4z"/>'
   };
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shapes[name]}</svg>`;
 }
@@ -71,14 +79,27 @@ function segment(options,current,action){return `<div class="segments">${options
 function counter(field,index,title,detail){const v=index===undefined?state.draft[state.active][field]:state.draft[state.active][field][index];const extra=index===undefined?'':`data-index="${index}"`;return `<div class="row"><div><div class="label">${text(title)}</div><small>${text(detail)}</small></div><div class="controls">${button('−','decrement',`class="square" data-field="${field}" ${extra} aria-label="Decrease ${text(title)}"`)}<input aria-label="${text(title)} count" inputmode="numeric" pattern="[0-9]*" type="number" min="0" class="counter" data-field="${field}" ${extra} value="${num(v)}">${button('+','increment',`class="square plus" data-field="${field}" ${extra} aria-label="Increase ${text(title)}"`)}</div></div>`}
 function pendingDialog(){
   if(!pending)return '';
+  if(pending.type==='result')return resultDialog();
   const rename=pending.type==='rename';
   return `<div class="dialog-backdrop"><section class="game-dialog card" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><form data-game-form>
     <h2 id="dialog-title">${rename?'Rename game':'Start a new game'}</h2>
-    ${rename?'':'<p class="muted">Your current game will be saved, including this round’s unfinished scores.</p>'}
+    ${rename?'':`<p class="muted">${gameOver(state.rounds,state.names.length)?'Your completed game will stay in Games with its final scores.':'Your current game will be saved, including this round’s unfinished scores.'}</p>`}
     <label for="game-title">Game name</label><input id="game-title" type="text" maxlength="80" required data-game-title value="${text(pending.title)}">
     ${rename?'':`<label>Number of players</label>${segment([[2,'2 players'],[4,'4 players'],[6,'6 players']],pending.mode,'new-mode')}`}
     <div class="toolbar dialog-actions">${button('Cancel','cancel','class="secondary"')}${button(rename?'Save name':'Create game','confirm','class="primary"')}</div>
     </form></section></div>`;
+}
+function resultDialog(){
+  const totals=standings(state.rounds,state.names.length),best=Math.max(...totals);
+  const ranked=totals.map((total,index)=>({index,total})).sort((a,b)=>b.total-a.total),tied=totals.filter(total=>total===best).length>1;
+  return `<div class="dialog-backdrop"><section class="game-dialog result-dialog card" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="result-description">
+    <div class="result-symbol">${icon('trophy')}</div><p class="result-eyebrow">Game complete</p>
+    <h2 id="dialog-title">${tied?'Game ends in a tie':`${text(label(ranked[0].index))} wins!`}</h2>
+    <p id="result-description" class="muted">${text(activeGame(library).title)} · ${state.rounds.length} rounds played</p>
+    <h3 class="result-scores-title">Final scores</h3><ol class="result-standings" aria-label="Final standings">${ranked.map(({index,total})=>`<li class="${total===best?'result-leader':''}"><div class="result-name"><span>${text(label(index))}</span>${total===best?`<small>${tied?'Tied for first':'Winner'}</small>`:''}</div><strong>${fmt(total)}<small>points</small></strong></li>`).join('')}</ol>
+    ${storageWarning?`<p class="note" role="alert">${text(storageWarning)}</p>${button('Export backup','export','class="secondary full"')}`:''}
+    <div class="result-actions">${button('View results','result-board','class="primary full"')}${button('New game','new-game','class="secondary full"')}${button('Back to Games','save-game','class="secondary full"')}</div>
+    </section></div>`;
 }
 function layout(content){
   const r=state.rounds.length,done=gameOver(state.rounds,state.names.length);
@@ -128,12 +149,12 @@ function libraryScreen(){
 }
 function settingsScreen(){return `<h2 class="title">Settings</h2><section class="card"><h3>Appearance</h3><p class="muted">Use your device’s appearance or choose a light or dark background.</p><div role="group" aria-label="Appearance">${segment([['system','System'],['light','Light'],['dark','Dark']],settings.appearance,'appearance')}</div></section><section class="card"><h3>Saved games & backups</h3><p>Your games are stored on this device. A backup includes every saved game and any unfinished scoring entries.</p><p>Import adds games to your library. Your existing games are kept.</p></section><section class="card"><h3>About</h3><p>Hand & Foot Scorekeeper · 3.2 preview</p><p class="muted">Custom house rules · Offline after first load</p></section>`}
 function presetsSection(){const a=storeGet(PRESETS_KEY,[]);return `<h2 class="title">Saved name sets</h2>${button('Save current names','save-preset','class="secondary"')}${a.map((p,i)=>`<div class="row"><span>${text(p.names.join(' / '))}</span>${button('Use','use-preset',`class="secondary" data-index="${i}"`)}</div>`).join('')}`}
-function boardScreen(){let n=state.names.length,totals=standings(state.rounds,n),max=Math.max(...totals),done=gameOver(state.rounds,n),winners=totals.map((v,i)=>v===max?i:-1).filter(i=>i>=0);return `<div class="scoreboard-heading"><h2 class="title">Scoreboard</h2><p class="muted">Round ${done?state.rounds.length:state.rounds.length+1} of ${state.rounds.length>4||state.rounds.length===4&&!done?5:4} · ${state.mode} players</p><p class="muted">Edit names at any time. Scores stay intact.</p></div><div class="scoreboard-cards">${state.names.map((name,i)=>`<div class="stat namefield scoreboard-card"><div class="scoreboard-card-head"><small>${state.mode===2?'Player':'Team'} ${i+1}</small><strong class="scoreboard-total">${fmt(totals[i])}</strong></div><input type="text" maxlength="36" data-name="${i}" value="${text(name)}" aria-label="Name for ${state.mode===2?'player':'team'} ${i+1}"><small class="scoreboard-total-label">Total points</small></div>`).join('')}</div>${state.rounds.length?`<div class="tablewrap"><table><thead><tr><th>Round</th>${state.names.map((_,i)=>`<th data-label="${i}">${text(label(i))}</th>`).join('')}</tr></thead><tbody>${state.rounds.map((r,i)=>`<tr><td>${i===4?'5 (TB)':i+1}</td>${r.scores.map((v,j)=>`<td>${fmt(v)}${r.out===j?' ★':''}</td>`).join('')}</tr>`).join('')}<tr><th>Total</th>${totals.map(v=>`<th>${fmt(v)}</th>`).join('')}</tr></tbody></table></div><p>${button('Edit last round','undo','class="secondary"')}</p>`:'<p class="muted scoreboard-empty">No rounds saved yet.</p>'}${done?`<div class="card hero"><h2>🏆 ${winners.length===1?`${text(label(winners[0]))} wins!`:'Game ends in a tie'}</h2></div>`:button(`Enter round ${state.rounds.length+1} scores →`,'go-score','class="primary full scoreboard-next"')}<div class="scoreboard-actions">${button('▦  Your games & history  ›','library','class="scoreboard-link"')}${button('↗  Share results  ›','share','class="scoreboard-link"')}</div>${presetsSection()}<h2 class="title">Game settings</h2><label>Number of players</label>${segment([[2,'2'],[4,'4'],[6,'6']],state.mode,'mode')}<p class="muted">${state.mode===2?'2 individual players, 3 decks, 1 red + 1 black book to go out':`${n} partnerships, ${state.mode+1} decks, 1 red + 2 black books to go out`}</p>`}
-function draw(){app.innerHTML=layout(state.screen==='game'?gameScreen():state.screen==='score'?scoreScreen():state.screen==='rules'?ruleScreen():state.screen==='review'?reviewScreen():state.screen==='library'?libraryScreen():state.screen==='settings'?settingsScreen():boardScreen());}
-function changeCount(field,index,value){
+function boardScreen(){let n=state.names.length,totals=standings(state.rounds,n),max=Math.max(...totals),done=gameOver(state.rounds,n),winners=totals.map((v,i)=>v===max?i:-1).filter(i=>i>=0);return `<div class="scoreboard-heading"><h2 class="title" id="scoreboard-title" tabindex="-1">Scoreboard</h2><p class="muted">Round ${done?state.rounds.length:state.rounds.length+1} of ${state.rounds.length>4||state.rounds.length===4&&!done?5:4} · ${state.mode} players</p><p class="muted">Edit names at any time. Scores stay intact.</p></div><div class="scoreboard-cards">${state.names.map((name,i)=>`<div class="stat namefield scoreboard-card"><div class="scoreboard-card-head"><small>${state.mode===2?'Player':'Team'} ${i+1}</small><strong class="scoreboard-total">${fmt(totals[i])}</strong></div><input type="text" maxlength="36" data-name="${i}" value="${text(name)}" aria-label="Name for ${state.mode===2?'player':'team'} ${i+1}"><small class="scoreboard-total-label">Total points</small></div>`).join('')}</div>${state.rounds.length?`<div class="tablewrap"><table><thead><tr><th>Round</th>${state.names.map((_,i)=>`<th data-label="${i}">${text(label(i))}</th>`).join('')}</tr></thead><tbody>${state.rounds.map((r,i)=>`<tr><td>${i===4?'5 (TB)':i+1}</td>${r.scores.map((v,j)=>`<td>${fmt(v)}${r.out===j?' ★':''}</td>`).join('')}</tr>`).join('')}<tr><th>Total</th>${totals.map(v=>`<th>${fmt(v)}</th>`).join('')}</tr></tbody></table></div><p>${button('Edit last round','undo','class="secondary"')}</p>`:'<p class="muted scoreboard-empty">No rounds saved yet.</p>'}${done?`<div class="card hero"><h2>🏆 ${winners.length===1?`${text(label(winners[0]))} wins!`:'Game ends in a tie'}</h2></div>`:button(`Enter round ${state.rounds.length+1} scores →`,'go-score','class="primary full scoreboard-next"')}<div class="scoreboard-actions">${button('▦  Your games & history  ›','library','class="scoreboard-link"')}${button('↗  Share results  ›','share','class="scoreboard-link"')}</div>${presetsSection()}<h2 class="title">Game settings</h2><label>Number of players</label>${segment([[2,'2'],[4,'4'],[6,'6']],state.mode,'mode')}<p class="muted">${state.mode===2?'2 individual players, 3 decks, 1 red + 1 black book to go out':`${n} partnerships, ${state.mode+1} decks, 1 red + 2 black books to go out`}</p>`}
+function draw(){numericEdit=null;app.innerHTML=layout(state.screen==='game'?gameScreen():state.screen==='score'?scoreScreen():state.screen==='rules'?ruleScreen():state.screen==='review'?reviewScreen():state.screen==='library'?libraryScreen():state.screen==='settings'?settingsScreen():boardScreen());if(pending?.type==='result')document.querySelector('[data-action="result-board"]')?.focus?.();}
+function changeCount(field,index,value,input=null){
   const d=state.draft[state.active],next=num(value),old=index===undefined?d[field]:d[field][index];
   if(next===old)return;
-  remember();if(index===undefined)d[field]=next;else d[field][index]=next;
+  remember(input);if(index===undefined)d[field]=next;else d[field][index]=next;
   state.completed[state.active]=false;persist();
 }
 function eligibilityNotice(){
@@ -179,9 +200,14 @@ function exportGame(){
   const blob=new Blob([JSON.stringify({app:'Hand & Foot Scorekeeper',exportedAt:new Date().toISOString(),game:compatibleGame(state),gameLibrary:snapshot,completedGames:archiveForLibrary(snapshot),namePresets:storeGet(PRESETS_KEY,[])},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`hand-foot-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-function openNewDialog(mode=state.mode){pending={type:'new',mode,title:`Game ${library.games.length+1}`};draw();document.querySelector('#game-title')?.focus?.()}
+function openNewDialog(mode=state.mode){pending={type:'new',mode,title:`Game ${library.games.length+1}`,returnToResult:pending?.type==='result'};draw();document.querySelector('#game-title')?.focus?.()}
+function cancelDialog(){
+  const result=pending?.type==='result';
+  pending=pending?.returnToResult?{type:'result'}:null;draw();
+  if(result)document.querySelector('#scoreboard-title')?.focus?.();
+}
 function confirmDialog(){
-  if(!pending)return;
+  if(!pending||pending.type==='result')return;
   const title=pending.title.trim();
   if(!title){alert('Enter a game name.');document.querySelector('#game-title')?.focus?.();return}
   try{
@@ -193,6 +219,7 @@ function confirmDialog(){
 }
 app.addEventListener('click',e=>{
   const el=e.target.closest('[data-action]');if(!el||el.disabled)return;
+  numericEdit=null;
   const a=el.dataset.action,val=el.dataset.value;
   switch(a){
     case 'screen':set(()=>state.screen=val);break;
@@ -212,7 +239,9 @@ app.addEventListener('click',e=>{
       set(()=>{
         undoStack.length=0;
         state.rounds.push({scores:state.draft.map((d,i)=>score(d,state.method,state.out===i)),entries:structuredClone(state.draft),out:state.out,method:state.method});
-        state.draft=state.names.map(blankEntry);state.completed=state.names.map(()=>false);state.step='left';state.active=0;state.screen='game';
+        state.draft=state.names.map(blankEntry);state.completed=state.names.map(()=>false);state.step='left';state.active=0;
+        const finished=gameOver(state.rounds,state.names.length);
+        state.screen=finished?'board':'game';pending=finished?{type:'result'}:null;
       });break;
     case 'undo':if(state.rounds.length)set(()=>{
       undoStack.length=0;const last=state.rounds.pop();state.draft=structuredClone(last.entries);state.method=last.method;state.out=last.out;
@@ -222,6 +251,7 @@ app.addEventListener('click',e=>{
     case 'go-rules':set(()=>state.screen='rules');break;
     case 'go-score':set(()=>{state.screen='score';state.step='left'});break;
     case 'go-board':set(()=>state.screen='board');break;
+    case 'result-board':pending=null;set(()=>state.screen='board');document.querySelector('#scoreboard-title')?.focus?.();break;
     case 'library':set(()=>state.screen='library');break;
     case 'save-preset':{const presets=storeGet(PRESETS_KEY,[]);presets.push({mode:state.mode,names:[...state.names]});storePut(PRESETS_KEY,presets);draw();break}
     case 'use-preset':{
@@ -237,7 +267,7 @@ app.addEventListener('click',e=>{
     case 'save-game':{const next=saveActive(library,{...state,screen:'library'});if(selectLibrary(next))state.screen='library';break}
     case 'settings':set(()=>state.screen='settings');break;
     case 'appearance':{const next=validateSettings({appearance:val});if(storePut(KEYS.settings,next)){settings=next;applyAppearance();draw()}else alert('The appearance setting could not be saved.');break}
-    case 'cancel':pending=null;draw();break;
+    case 'cancel':cancelDialog();break;
     case 'confirm':confirmDialog();break;
     case 'export':exportGame();break;
     case 'import':document.querySelector('#import-file').click();break;
@@ -250,7 +280,9 @@ app.addEventListener('change',e=>{
   else if(el.matches('[data-select="active"]'))set(()=>{state.active=+el.value;state.step='left'});
   else if(el.name==='wentout'){if(state.out!==+el.value){remember();set(()=>state.out=+el.value)}}
   else if(el.matches('#import-file')){const file=el.files?.[0];el.value='';if(file)void importFile(file)}
+  numericEdit=null;
 });
+app.addEventListener('focusout',e=>{if(numericEdit===e.target)numericEdit=null});
 app.addEventListener('input',e=>{
   const el=e.target;
   if(el.matches('[data-game-title]')){if(pending)pending.title=el.value}
@@ -259,17 +291,17 @@ app.addEventListener('input',e=>{
     state.names[+el.dataset.name]=el.value;persist();
     for(const labelEl of document.querySelectorAll(`[data-label="${+el.dataset.name}"]`))labelEl.textContent=label(+el.dataset.name);
   }else if(el.matches('[data-field]')){
-    changeCount(el.dataset.field,el.dataset.index===undefined?undefined:+el.dataset.index,el.value);refreshScoring();
+    changeCount(el.dataset.field,el.dataset.index===undefined?undefined:+el.dataset.index,el.value,el);refreshScoring();
   }else if(el.matches('[data-manual]')){
     const value=num(el.value);if(value!==state.draft[state.active][el.dataset.manual]){
-      remember();state.draft[state.active][el.dataset.manual]=value;state.completed[state.active]=false;persist();refreshScoring();
+      remember(el);state.draft[state.active][el.dataset.manual]=value;state.completed[state.active]=false;persist();refreshScoring();
     }
   }
 });
 app.addEventListener('submit',event=>{if(event.target.matches('[data-game-form]')){event.preventDefault();confirmDialog()}});
 app.addEventListener('keydown',event=>{
   if(!pending)return;
-  if(event.key==='Escape'){pending=null;draw();return}
+  if(event.key==='Escape'){cancelDialog();return}
   if(event.key==='Tab'){
     const dialog=document.querySelector('[role="dialog"]'),controls=dialog?.querySelectorAll?.('input,button');
     if(!controls?.length)return;

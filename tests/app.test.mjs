@@ -87,8 +87,8 @@ test('Entry undo restores the edited side and scoring step',()=>{
 
 test('Typing and leaving number fields does not redraw the pending button or discard live input',()=>{
   const game=freshGame();game.method='manual';game.screen='score';const app=appHarness(game),html=app.app.innerHTML;
-  const field=app.input('[data-manual]','120',{manual:'manualFor'});app.change(field);
-  assert.equal(app.app.innerHTML,html);assert.equal(app.handlers.focusout,undefined);assert.equal(app.node('[data-provisional-score]').textContent,'220');
+  const field=app.input('[data-manual]','120',{manual:'manualFor'});app.change(field);app.handlers.focusout({target:field});
+  assert.equal(app.app.innerHTML,html);assert.equal(app.node('[data-provisional-score]').textContent,'220');
   app.click('next');assert.equal(app.api.state().active,1);assert.equal(app.api.state().completed[0],true);
 });
 
