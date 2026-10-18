@@ -41,18 +41,49 @@ export function addGame(library, game, {title, mode = game.mode, now = new Date(
 }
 export function openGame(library, game, id, now = new Date().toISOString()) {
   const saved = saveActive(library, game, now), target = saved.games.find(item => item.id === id);
-  if (!target) throw new Error('Saved game not found');
+  if (!target || target.deletedAt) throw new Error('Saved game not found');
   const restored = structuredClone(target.game);
   restored.screen = gameOver(restored.rounds, restored.names.length) ? 'board' : target.resumeScreen;
   return saveActive({...saved, activeId: id}, restored, now);
 }
 export function renameGame(library, game, id, title) {
   const saved = saveActive(library, game);
-  if (!saved.games.some(item => item.id === id)) throw new Error('Saved game not found');
+  if (!saved.games.some(item => item.id === id && !item.deletedAt)) throw new Error('Saved game not found');
   return validateLibrary({...saved, games: saved.games.map(item => item.id === id ? {...item, title: title.trim()} : item)});
 }
+export function rematchGame(library, game, id, {title, now = new Date().toISOString()} = {}) {
+  const saved = saveActive(library, game, now), source = saved.games.find(item => item.id === id && !item.deletedAt);
+  if (!source) throw new Error('Saved game not found');
+  const next = addGame(saved, game, {title, mode: source.game.mode, now});
+  const rematch = activeGame(next);
+  rematch.game.names = [...source.game.names];
+  rematch.game.method = source.game.method;
+  return validateLibrary(next);
+}
+export function removeGame(library, game, id, now = new Date().toISOString()) {
+  let saved = saveActive(library, game, now);
+  const target = saved.games.find(item => item.id === id && !item.deletedAt);
+  if (!target) throw new Error('Saved game not found');
+  if (id === saved.activeId) {
+    const replacement = saved.games.filter(item => item.id !== id && !item.deletedAt)
+      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+    saved = replacement ? openGame(saved, game, replacement.id, now) : addGame(saved, game, {title: 'New game', mode: game.mode, now});
+  }
+  return validateLibrary({...saved, games: saved.games.map(item => item.id === id ? {
+    ...item, deletedAt: Date.parse(now) < Date.parse(item.createdAt) ? item.createdAt : now
+  } : item)});
+}
+export function restoreGame(library, game, id) {
+  const saved = saveActive(library, game);
+  if (!saved.games.some(item => item.id === id && item.deletedAt)) throw new Error('Removed game not found');
+  return validateLibrary({...saved, games: saved.games.map(item => {
+    if (item.id !== id) return item;
+    const {deletedAt, ...restored} = item;
+    return restored;
+  })});
+}
 export function archiveForLibrary(library) {
-  return library.games.filter(item => item.game.rounds.length).map((item, i) => ({
+  return library.games.filter(item => !item.deletedAt && item.game.rounds.length).map((item, i) => ({
     id: i + 1, date: item.updatedAt, mode: item.game.mode, names: [...item.game.names], rounds: structuredClone(item.game.rounds),
     finished: gameOver(item.game.rounds, item.game.names.length)
   }));
@@ -69,6 +100,9 @@ export function mergeBackup(library, game, backup) {
     const same = existing && existing.title === candidate.title && JSON.stringify({...existing.game, screen: 'game'}) === JSON.stringify({...candidate.game, screen: 'game'});
     if (existing && !same) id = newId();
     if (!existing || id !== candidate.id) games.push({...candidate, id});
+    // An explicit import of a visible game can restore its identical removed copy.
+    // A removed backup copy must never hide a game that is visible on this device.
+    else if (existing.deletedAt && !candidate.deletedAt) delete existing.deletedAt;
     if (candidate.id === incoming.activeId) activeId = id;
   }
   return validateLibrary({...saved, activeId, games});

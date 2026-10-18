@@ -117,9 +117,13 @@ export function validateLibrary(value) {
     for (const field of ['createdAt', 'updatedAt']) requireValue(typeof item[field] === 'string' && Number.isFinite(Date.parse(item[field])), 'Invalid saved-game date');
     requireValue(Date.parse(item.updatedAt) >= Date.parse(item.createdAt), 'Invalid saved-game date order');
     requireValue(['game', 'score', 'board', 'rules', 'review'].includes(item.resumeScreen), 'Invalid saved-game screen');
-    return {id: item.id, title: item.title.trim(), createdAt: item.createdAt, updatedAt: item.updatedAt, resumeScreen: item.resumeScreen, game: validateGame(item.game)};
+    if (Object.hasOwn(item, 'deletedAt')) requireValue(typeof item.deletedAt === 'string' &&
+      Number.isFinite(Date.parse(item.deletedAt)) && Date.parse(item.deletedAt) >= Date.parse(item.createdAt), 'Invalid removed-game date');
+    return {id: item.id, title: item.title.trim(), createdAt: item.createdAt, updatedAt: item.updatedAt, resumeScreen: item.resumeScreen,
+      ...(Object.hasOwn(item, 'deletedAt') ? {deletedAt: item.deletedAt} : {}), game: validateGame(item.game)};
   });
   requireValue(typeof value.activeId === 'string' && seen.has(value.activeId), 'Active game is missing');
+  requireValue(!games.find(item => item.id === value.activeId).deletedAt, 'Active game has been removed');
   return {version: 1, activeId: value.activeId, games};
 }
 
