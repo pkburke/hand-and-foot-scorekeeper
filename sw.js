@@ -1,4 +1,4 @@
-const CACHE='hand-foot-v3-3-1';
+const CACHE='hand-foot-v3-3-2';
 const FILES=['./','./index.html','./styles.css','./app.mjs','./scoring.mjs','./data.mjs','./games.mjs','./manifest.webmanifest','./icons/icon.svg','./icons/icon-180.png','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting()));

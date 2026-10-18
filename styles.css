@@ -43,7 +43,7 @@ input, select { font-size: 1rem; }
 .bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr))}.nav-tab{font-size:0.625rem}.nav-icon{font-size:1.3125rem}
 .top>div:first-child{min-width:0}.header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}.settings-button{min-width:44px;min-height:44px;padding:8px;font-size:1.3125rem}.current-game-name{font-size:0.8125rem;color:var(--muted);margin-top:5px;overflow-wrap:anywhere}
 .games-heading{margin:24px 0 16px}.games-heading .title{margin-bottom:5px}.games-heading .primary{width:100%;margin-top:8px}.section-label{font-size:0.8125rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:24px 0 10px}
-.game-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.game-card-heading h3{margin:4px 0;min-width:0;overflow-wrap:anywhere}.game-card-heading .pill{font-size:0.6875rem;white-space:nowrap}.saved-game.current{border-color:var(--accent)}.saved-game-totals{overflow-wrap:anywhere;line-height:1.7}.saved-game .toolbar{margin-top:18px}.finished-games{margin-top:24px}.finished-games summary{min-height:44px;padding:12px 0;font-weight:700}.new-game-action{display:grid;gap:10px}
+.game-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.game-card-heading h3{margin:4px 0;min-width:0;overflow-wrap:anywhere}.game-card-heading .pill{font-size:0.6875rem;white-space:nowrap}.saved-game.current{border-color:var(--accent)}.saved-game-totals{overflow-wrap:anywhere;line-height:1.7}.finished-games{margin-top:24px}.finished-games summary{min-height:44px;padding:12px 0;font-weight:700}.new-game-action{display:grid;gap:10px}
 .dialog-backdrop{position:fixed;inset:0;z-index:100;background:#00000077;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}.game-dialog{width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow:auto;box-shadow:0 16px 80px #00000044}.game-dialog h2{margin-top:0}.dialog-actions{margin-top:24px}.game-dialog .segments button{font-size:0.75rem}.card h3{margin-top:0}.card p{line-height:1.55}
 
 /* Quiet Contrast layout and accents. */
@@ -82,8 +82,8 @@ input, select { font-size: 1rem; }
 .saved-game-score span{display:block;font-size:0.75rem;color:var(--muted)}
 .saved-game-score b{display:block;font-size:1.5625rem;font-weight:650;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 .game-result{font-size:0.75rem;color:var(--muted)}
-.saved-game .toolbar .primary{flex:2}
-.saved-game .toolbar .secondary{background:transparent}
+
+
 .bottom-nav{background:var(--surface);box-shadow:0 -3px 14px var(--shadow)}
 .nav-tab{font-size:0.6875rem;min-width:0;font-weight:500}
 .nav-icon{display:flex;align-items:center;justify-content:center}
@@ -100,8 +100,8 @@ input[type=search].wide{background:var(--surface);color:var(--text)}
   .header-actions .pill{padding:6px 7px;font-size:0.625rem}
   .header-actions{gap:0}
   .games-heading .title{font-size:1.5rem}
-  .saved-game-totals.three{grid-template-columns:1fr;gap:10px}
-  .saved-game-totals.three .saved-game-score{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+
+
 }
 @media(prefers-reduced-motion:reduce){.primary,.square.plus{transition:none}}
 
@@ -146,8 +146,8 @@ input[type=text],input[type=number].wide,select,input[type=search].wide{font-siz
 .danger{color:var(--surface)}
 :root[data-theme=dark] .danger{color:var(--page)}
 .remove-button{color:var(--danger)}
-.saved-game .game-management{margin-top:8px}
-.game-management>*{flex:1 1 8rem}
+
+
 .removed-game{border-style:dashed;overflow-wrap:anywhere}
 .finished-games summary{cursor:pointer}
 .tablewrap th[scope=row]{font-weight:400}
@@ -159,9 +159,23 @@ input[type=text],input[type=number].wide,select,input[type=search].wide{font-siz
 @media(max-width:360px){.dialog-backdrop{padding:12px}.game-dialog{max-height:calc(100dvh - 24px)}}
 .app{padding-bottom:calc(7.5rem + env(safe-area-inset-bottom,0px))}
 .saved-game-totals{grid-template-columns:repeat(auto-fit,minmax(min(100%,7rem),1fr))}
-.saved-game-totals.three{grid-template-columns:repeat(auto-fit,minmax(min(100%,5.5rem),1fr))}
+.saved-game-totals.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr))}
 .summary{flex-wrap:wrap}
 .bottom-nav{display:flex;flex-wrap:wrap;gap:2px}
 .nav-tab{flex:1 1 3.4rem;min-width:3.4rem}
 .game-dialog{overflow-wrap:anywhere}
+
+/* Keep library actions and totals aligned in completed and unfinished cards. */
+.saved-game{container-name:saved-game;container-type:inline-size}
+.saved-game-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:18px;align-items:stretch}
+.saved-game-actions button{min-width:0;padding:12px;white-space:normal}
+.saved-game-actions .continue-game{grid-column:1 / -1}
+.saved-game-actions .game-text-action{background:transparent}
+.saved-game-score{display:flex;flex-direction:column;gap:4px}
+.saved-game-score span{flex:1;min-width:0}
+@container saved-game (max-width:20rem){
+  .saved-game-totals.three{grid-template-columns:1fr;gap:12px}
+  .saved-game-totals.three .saved-game-score{flex-direction:row;align-items:baseline;justify-content:space-between;gap:12px}
+  .saved-game-totals.three .saved-game-score b{text-align:right}
+}
