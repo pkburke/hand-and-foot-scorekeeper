@@ -1,63 +1,99 @@
-# Hand & Foot Scorekeeper 3.3.1
+# Hand & Foot Scorekeeper
 
-Release preparation branch: `feature/v3.3`. Validate on staging before promoting to production.
+A scorekeeping companion for playing Hand & Foot with real cards. Track rounds for **2 individual players, 4 players in two partnerships, or 6 players in three partnerships**, keep several games in progress, and return to unfinished scores later.
 
-## Games and Settings
+Use it in a phone, tablet, or desktop browser. No account is needed, and it works offline after the first successful online load.
 
-The Games area keeps multiple named games on the same device. Start a new 2-, 4-, or 6-player game, then continue an earlier game with its names, rounds, unfinished scores, selected team, and scoring step intact. Games autosave; Save & return to Games also opens the collection. Rename any game and view completed games separately.
+- [Open the app](https://handandfoot.theburkeclann.com/)
+- [Try the test version](https://handandfoottest.theburkeclann.com/) — upcoming changes being tested before release
 
-Play again is available from the finish dialog, a completed scoreboard, and completed game cards. It creates a separate game with the same player count, names/teams, and scoring method. Rounds, draft entries, completion flags, and going-out selection start fresh. The original game stays intact.
+The app follows the house rules summarized below. Check the in-app **Rules** before playing if your group uses a different variation.
 
-Remove moves a game into a collapsible Removed games section after confirmation. Restore returns its scores, drafts, and resume position to the library without replacing the current game. There is no automatic expiry or permanent-delete action. Removing the current game selects another visible game; if it was the only visible game, a blank game is created. Removed games are included in full-library backups. Older app versions may show removed games as ordinary saved games because they do not understand removal metadata.
+## Start a game
 
-Saving the deciding round opens a result dialog with the winner (or a final tie), ranked final scores, and View results, Play again, New game, and Back to Games actions. Completed games remain in the collection. Dismissing the dialog leaves the scoreboard visible; cancelling New game returns to the result dialog. A tied fourth round continues to the tiebreaker without announcing a finished game.
+1. Open **Games**, choose **+ New game**, give it a name, and select 2, 4, or 6 players.
+2. On **Scoreboard**, enter the player or team names. Names can be changed later without affecting scores.
+3. Use **Reference** during play for card values, the opening minimum, and books needed to go out. **Rules** contains a searchable house rulebook.
+4. When a round ends, open **Score** and enter each player’s or team’s results.
 
-Settings offers System, Light, and Dark appearance. The selected Quiet Contrast design uses calm blue surfaces, cyan controls, and restrained cyan-to-magenta accents that connect the interface to the recovered H&F artwork. Settings also records when the last backup export started on this device; confirm the download was saved in Files or Downloads. Browser download initiation does not confirm a completed or retained file. Export history is device-local bookkeeping and is not imported from backups; failure to remember that date never prevents scoring or export.
+## Score a round
 
-## Hosting and releases
+Choose **Calculated** to have the app work out the totals from card and book counts:
 
-This is a static app with no install or build step. GitHub holds the code; one Cloudflare Pages project (`hand-and-foot-scorekeeper-test`) hosts production and previews.
+1. **Unplayed:** count cards still in Hand or Foot by point value, including any red 3s held.
+2. **Books:** enter the number of completed red and black books.
+3. **Played:** count the cards in completed books **and** incomplete melds, each exactly once. Book bonuses are added separately.
 
-- `main` → production: https://handandfoot.theburkeclann.com/
-- `staging` → stable test site: https://handandfoottest.theburkeclann.com/
-- Feature branches → Cloudflare branch preview addresses.
+Use **Mark complete & next →** for each player or team. Select **Who went out?**, then choose **Review round →**, check the totals, and **Confirm & save**. The app adds the +100 going-out bonus automatically.
 
-The test domain uses a proxied CNAME to `staging.hand-and-foot-scorekeeper-test.pages.dev`. Keep Cloudflare's production branch set to `main` with automatic deployments enabled. Merge feature changes into `staging`, test there, then promote the accepted release into `main`. A feature-branch push alone does not update the stable test domain.
+If your group has already counted its points, choose **Manual** instead:
 
-GitHub Actions runs `node --test tests/*.test.mjs` on every push and pull request using Node 24. The workflow has read-only repository access and no deployment credentials. Cloudflare deployment runs independently; confirm the regression check is green before promoting a release.
+| Field | What to enter |
+| --- | --- |
+| Points for | All played card points, including cards inside books |
+| Points against | Unplayed-card penalties, including red 3s, entered as a positive number |
+| Completed-book total | Book bonuses only: 500 per red book and 300 per black book |
 
-GitHub Pages is the legacy production address. Games remain separate on each hostname; export from the old address and import at the new one when moving. Update bookmarks and home-screen installations after transferring saved games.
+Do not include the going-out bonus in these fields. Manual scoring trusts your book totals; check that the side going out has the required books.
 
-For local testing, serve this folder with an HTTP server, for example `python3 -m http.server 8766`, then open `http://localhost:8766/`.
+**Undo last entry** reverses your last scoring entry even after you leave its field. Typing a number continuously counts as one edit; each +/− tap is separate. Reloading, switching games, importing a backup, or reopening a saved round clears entry-undo history.
 
-## Saved data and backups
+**Scoreboard** shows cumulative totals and the score for each round. A star marks who went out. Use **Edit last round** to correct the most recently saved round, or **Share results** to share or copy the standings.
 
-Games are stored locally in the browser, with no account or cross-device sync. A different browser, device, or domain has its own collection. Export a backup before changing devices or hosting domains.
+## Keep several games going
 
-Existing v3 game data stays under `hand-foot-scorekeeper-v3`. The full collection uses `hand-foot-scorekeeper-v32-games`, and device appearance uses `hand-foot-scorekeeper-v32-settings`. Earlier current-game data and v3.1 archives migrate into the new collection on first use. Earlier archives can restore the rounds they retained; they did not contain unfinished entries.
+Games and unfinished entries autosave on this device. Start another game whenever you need to, then select **Continue** on an earlier game to resume its scores and scoring step. **Save & return to Games** opens your collection.
 
-Export backup includes all games and unfinished scoring entries. JSON keeps the older `game`, `completedGames`, and `namePresets` fields and adds optional `gameLibrary`. Older game-only backups remain supported. Import adds games to the current collection; differing versions of a game are both retained. Identical games with matching IDs are not duplicated. Importing a visible game from an earlier backup restores its identical removed copy; importing a removed copy never hides a visible local game. Appearance remains a device setting.
+At the end of a game, a result dialog announces the winner or final tie. You can view results, start a new game, return to Games, or choose **Play again**. A rematch keeps the same players, teams, and scoring method in a fresh game; the original results stay in **Completed games**.
 
-Switching games, importing a backup, and reopening a saved round clear entry-undo history. Scores and drafts are preserved independently for each game.
+Use **Rename** to change a game’s title. **Remove** moves it into **Removed games**, where **Restore game** brings it back with its scores and unfinished entries. Removed games do not expire automatically and remain included in backups.
 
-Undo last entry restores the value before a continuous numeric-field edit, rather than stepping backward through each digit. Leaving the field or using another action starts a separate edit. Autosave still writes every keystroke, and plus/minus button taps remain individually undoable.
+## House scoring rules
 
-If stored data cannot be read, the original text is retained under the corresponding storage key plus `-recovery` (with a timestamp suffix when needed). The app displays a recovery notice. If preservation fails, saving pauses rather than overwriting unreadable data. Storage write failures are shown in the app; Export backup includes the current in-memory scores even when autosave has failed.
+| Item | Points or requirement |
+| --- | --- |
+| Jokers | 50 points each |
+| 2s and Aces | 20 points each |
+| 8 through King | 10 points each |
+| 4 through 7 | 5 points each |
+| Black 3s | 0 points |
+| Red 3s held in Hand or Foot | −300 points each |
+| Red book / black book | +500 / +300, in addition to the cards’ values |
+| Going out | +100; requires 1 red + 1 black book for 2 players, or 1 red + 2 black books for partnerships |
+| Opening minimum by round | 50, 90, 120, 150; 150 for the tiebreaker |
 
-## App updates
+Round score = played card points + book bonuses + going-out bonus − unplayed cards and penalties. Negative scores are allowed.
 
-The app checks its service worker when returning to the foreground. When a newer version is ready, the running app offers Update now and Later without replacing the scoring form or reloading automatically. Update now saves the current library and draft before reloading; if saving fails, the app stays open and asks for a backup. A deferred update remains available in Settings. Reloading clears entry-Undo history as before; saved scores and drafts remain.
+The highest cumulative score after four rounds wins. If the leaders are tied, play one fifth round; a tie after that is the final result. The in-app **Rules** covers setup, melds, discard pickup, and other play rules. Rule values are currently fixed rather than configurable.
 
-Existing v3.3 installations need one ordinary reload/reopen to receive the update-notice feature. The feature then handles subsequent versions. A new install, matching worker version, or temporarily older controller does not show a misleading update prompt.
+## Save, back up, and move your games
 
-## Accessibility
+Saved games belong to the **browser, device, and site address** where you play. There is no account or automatic sync. Clearing browser data can remove your games, and the production and test sites have separate collections.
 
-Typography follows the browser's default text size. Layouts reflow with enlarged text, controls offer at least 44 × 44 CSS-pixel targets, and numeric fields retain readable input sizes. Related scoring controls have named groups and field descriptions; the round table has row/column headings and a caption. Navigation moves focus to the new screen heading, counter buttons retain focus across updates, and modal dialogs trap keyboard focus and return it when cancelled. Completed/removed sections remain expanded during dialog interactions. Real iPhone VoiceOver, text settings, and software-keyboard checks remain part of release acceptance.
+Use **Export backup** to download a JSON file containing all games, completed results, removed games, unfinished entries, and saved player/team name sets. Confirm the file is actually saved in Files or Downloads; the **Last export started** date in Settings records when the export began.
 
-Physical-device release acceptance is tracked in [TESTING.md](TESTING.md).
+To move your games, export from the original browser or site, open the destination, and choose **Import backup**. Import adds games to the collection. Identical matching saves are not duplicated, while differing versions are retained separately. Appearance settings and export history stay local to each browser. Older game-only backups are also supported, though they may not contain unfinished entries.
 
-## Regression checks
+If the app reports an autosave problem, keep it open and export a backup of the current scores before reloading or leaving.
 
-Run `node --test tests/*.test.mjs` with a current Node.js installation. Tests cover house-rule scoring, 2/4/6-player round workflows, multi-game switching and drafts, migration, backup validation and merging, rollback on failed storage writes, corrupt-data recovery, input handling, appearance settings, rematches, recoverable removal, backup/import removal semantics, backup export history, save-before-update behavior, and service-worker caching/version messaging.
+## Appearance, installation, and updates
 
-The favicon and PNG icons use the recovered H&F reference artwork with the surrounding white margin removed. `icon.svg` embeds the original raster artwork; it is not a vector trace.
+Open **Settings** to choose **System**, **Light**, or **Dark** appearance. You can also add the app to your Home Screen using your browser’s sharing or install option. Load it online first so its files are available for offline use.
+
+When a new version is ready, choose **Update now** or **Later**. The app saves your current scores and unfinished entries before reloading for an update. A postponed update remains available as **Save & update** in Settings. An update reload clears entry-undo history.
+
+## Development and testing
+
+This is a static HTML, CSS, and JavaScript app with no package installation or build step. To run it locally:
+
+```sh
+python3 -m http.server 8766
+```
+
+Open [localhost:8766](http://localhost:8766/). Run the automated checks with Node.js:
+
+```sh
+node --test tests/*.test.mjs
+```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for code structure, storage behavior, and deployment, and [TESTING.md](TESTING.md) for physical-device and live-game acceptance checks.
