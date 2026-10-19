@@ -87,3 +87,9 @@ test('Import does not mistake another device’s export time for a local backup 
   const app=appHarness(),last='2026-10-17T12:00:00.000Z';app.storage.setItem(KEYS.lastExport,last);
   await app.import({game:freshGame(6),exportedAt:'2026-10-18T12:00:00.000Z'});assert.equal(app.storage.getItem(KEYS.lastExport),last);
 });
+
+test('An update arriving while Settings is already open exposes its deferred action without redrawing',()=>{
+  const app=updatingApp();app.click('settings');const html=app.app.innerHTML;app.signal('3.4.0');
+  assert.equal(app.node('[data-settings-update-message]').hidden,false);assert.match(app.node('[data-settings-update-message]').textContent,/3.4.0/);
+  assert.equal(app.node('[data-settings-update-button]').hidden,false);app.click('update-later');assert.equal(app.node('[data-settings-update-button]').hidden,false);assert.equal(app.app.innerHTML,html);
+});
