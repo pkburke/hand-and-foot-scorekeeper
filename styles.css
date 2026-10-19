@@ -179,3 +179,9 @@ input[type=text],input[type=number].wide,select,input[type=search].wide{font-siz
   .saved-game-totals.three .saved-game-score{flex-direction:row;align-items:baseline;justify-content:space-between;gap:12px}
   .saved-game-totals.three .saved-game-score b{text-align:right}
 }
+
+.update-notice[hidden]{display:none}
+.update-notice{margin:16px 0;overflow-wrap:anywhere}
+.update-notice p{margin:0 0 12px}
+.backup-status{font-weight:650;overflow-wrap:anywhere}
+[data-backup-date-warning]:empty{display:none}

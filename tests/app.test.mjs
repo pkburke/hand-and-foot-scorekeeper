@@ -25,9 +25,10 @@ for(const mode of [2,4,6])test(`Importing ${mode}-player backup clears old game 
 
 test('Invalid game, auxiliary data and unreadable files preserve current game, storage and undo',async()=>{
   const game=freshGame();game.method='manual';game.screen='score';const app=appHarness(game);app.input('[data-manual]','120',{manual:'manualFor'});
-  const before=await app.export(),raw=Object.fromEntries(app.storage.values),undo=app.api.stack();
+  const before=await app.export(),undo=app.api.stack();
   for(const payload of [{game:{...freshGame(),draft:[{},{}]}},{game:freshGame(),completedGames:[null]},{game:freshGame(),namePresets:[null]}]){
-    await app.import(payload);assert.deepEqual((await app.export()).game,before.game);assert.deepEqual(Object.fromEntries(app.storage.values),raw);assert.equal(app.api.stack(),undo);
+    const raw=Object.fromEntries(app.storage.values);
+    await app.import(payload);assert.deepEqual(Object.fromEntries(app.storage.values),raw);assert.deepEqual((await app.export()).game,before.game);assert.equal(app.api.stack(),undo);
   }
   await app.api.importFile({text:()=>Promise.reject(Error('File unreadable'))});assert.match(app.alerts.at(-1),/File unreadable/);
   await app.api.importFile({text:()=>Promise.resolve('{bad json')});assert.match(app.alerts.at(-1),/Could not import/);

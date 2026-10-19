@@ -5,7 +5,8 @@ export const KEYS = {
   archive: 'hand-foot-scorekeeper-v31-library',
   presets: 'hand-foot-scorekeeper-v31-presets',
   games: 'hand-foot-scorekeeper-v32-games',
-  settings: 'hand-foot-scorekeeper-v32-settings'
+  settings: 'hand-foot-scorekeeper-v32-settings',
+  lastExport: 'hand-foot-scorekeeper-last-export'
 };
 
 function requireValue(condition, message) {

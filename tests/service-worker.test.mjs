@@ -33,3 +33,11 @@ test('Offline fetch serves saved data; a cache miss gives a network error respon
 test('Cross-origin and non-GET requests are left alone',async()=>{
   const sw=worker();assert.equal(await sw.fetch({method:'POST',url:'https://example.test/'}),undefined);assert.equal(await sw.fetch({method:'GET',url:'https://other.test/'}),undefined);assert.equal(sw.requests.length,0);
 });
+
+test('The service worker reports its release version to the requesting page',()=>{
+  const sw=worker(),messages=[];
+  sw.handlers.message({data:{type:'GET_APP_VERSION'},source:{postMessage:message=>messages.push(message)}});
+  assert.equal(messages[0].type,'APP_VERSION');assert.equal(messages[0].version,'3.3.1');
+  sw.handlers.message({data:{type:'unrelated'},source:{postMessage:message=>messages.push(message)}});assert.equal(messages.length,1);
+  assert.doesNotThrow(()=>sw.handlers.message({data:{type:'GET_APP_VERSION'},source:null}));
+});

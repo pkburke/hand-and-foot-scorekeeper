@@ -1,4 +1,4 @@
-# Hand & Foot Scorekeeper 3.3
+# Hand & Foot Scorekeeper 3.3.1
 
 Release preparation branch: `feature/v3.3`. Validate on staging before promoting to production.
 
@@ -12,7 +12,7 @@ Remove moves a game into a collapsible Removed games section after confirmation.
 
 Saving the deciding round opens a result dialog with the winner (or a final tie), ranked final scores, and View results, Play again, New game, and Back to Games actions. Completed games remain in the collection. Dismissing the dialog leaves the scoreboard visible; cancelling New game returns to the result dialog. A tied fourth round continues to the tiebreaker without announcing a finished game.
 
-Settings offers System, Light, and Dark appearance. The selected Quiet Contrast design uses calm blue surfaces, cyan controls, and restrained cyan-to-magenta accents that connect the interface to the recovered H&F artwork.
+Settings offers System, Light, and Dark appearance. The selected Quiet Contrast design uses calm blue surfaces, cyan controls, and restrained cyan-to-magenta accents that connect the interface to the recovered H&F artwork. Settings also records when the last backup export started on this device; confirm the download was saved in Files or Downloads. Browser download initiation does not confirm a completed or retained file. Export history is device-local bookkeeping and is not imported from backups; failure to remember that date never prevents scoring or export.
 
 ## Hosting and releases
 
@@ -23,6 +23,8 @@ This is a static app with no install or build step. GitHub holds the code; one C
 - Feature branches → Cloudflare branch preview addresses.
 
 The test domain uses a proxied CNAME to `staging.hand-and-foot-scorekeeper-test.pages.dev`. Keep Cloudflare's production branch set to `main` with automatic deployments enabled. Merge feature changes into `staging`, test there, then promote the accepted release into `main`. A feature-branch push alone does not update the stable test domain.
+
+GitHub Actions runs `node --test tests/*.test.mjs` on every push and pull request using Node 24. The workflow has read-only repository access and no deployment credentials. Cloudflare deployment runs independently; confirm the regression check is green before promoting a release.
 
 GitHub Pages is the legacy production address. Games remain separate on each hostname; export from the old address and import at the new one when moving. Update bookmarks and home-screen installations after transferring saved games.
 
@@ -42,12 +44,20 @@ Undo last entry restores the value before a continuous numeric-field edit, rathe
 
 If stored data cannot be read, the original text is retained under the corresponding storage key plus `-recovery` (with a timestamp suffix when needed). The app displays a recovery notice. If preservation fails, saving pauses rather than overwriting unreadable data. Storage write failures are shown in the app; Export backup includes the current in-memory scores even when autosave has failed.
 
+## App updates
+
+The app checks its service worker when returning to the foreground. When a newer version is ready, the running app offers Update now and Later without replacing the scoring form or reloading automatically. Update now saves the current library and draft before reloading; if saving fails, the app stays open and asks for a backup. A deferred update remains available in Settings. Reloading clears entry-Undo history as before; saved scores and drafts remain.
+
+Existing v3.3 installations need one ordinary reload/reopen to receive the update-notice feature. The feature then handles subsequent versions. A new install, matching worker version, or temporarily older controller does not show a misleading update prompt.
+
 ## Accessibility
 
 Typography follows the browser's default text size. Layouts reflow with enlarged text, controls offer at least 44 × 44 CSS-pixel targets, and numeric fields retain readable input sizes. Related scoring controls have named groups and field descriptions; the round table has row/column headings and a caption. Navigation moves focus to the new screen heading, counter buttons retain focus across updates, and modal dialogs trap keyboard focus and return it when cancelled. Completed/removed sections remain expanded during dialog interactions. Real iPhone VoiceOver, text settings, and software-keyboard checks remain part of release acceptance.
 
+Physical-device release acceptance is tracked in [TESTING.md](TESTING.md).
+
 ## Regression checks
 
-Run `node --test tests/*.test.mjs` with a current Node.js installation. Tests cover house-rule scoring, 2/4/6-player round workflows, multi-game switching and drafts, migration, backup validation and merging, rollback on failed storage writes, corrupt-data recovery, input handling, appearance settings, rematches, recoverable removal, backup/import removal semantics, and service-worker caching.
+Run `node --test tests/*.test.mjs` with a current Node.js installation. Tests cover house-rule scoring, 2/4/6-player round workflows, multi-game switching and drafts, migration, backup validation and merging, rollback on failed storage writes, corrupt-data recovery, input handling, appearance settings, rematches, recoverable removal, backup/import removal semantics, backup export history, save-before-update behavior, and service-worker caching/version messaging.
 
 The favicon and PNG icons use the recovered H&F reference artwork with the surrounding white margin removed. `icon.svg` embeds the original raster artwork; it is not a vector trace.

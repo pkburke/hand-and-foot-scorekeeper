@@ -8,7 +8,9 @@ let state=load();
 let library=readSaved(KEYS.games,null,validateLibrary)??makeLibrary(state,storeGet(ARCHIVE_KEY,[]));
 state=structuredClone(activeGame(library).game);
 let settings=readSaved(KEYS.settings,{appearance:'system'},validateSettings);
-const APP_VERSION='3.3';
+const APP_VERSION='3.3.1';
+let lastExport=readLastExport(),backupDateWarning='';
+let availableVersion='',dismissedVersion='',updateWarning='',workerRegistration=null;
 let pending=null;let ruleQuery='';let renderedScreen=null,completedOpen=false,removedOpen=false,announcement='';const app=document.querySelector('#app');
 function preserveInvalidData(key,raw){
   try{
@@ -27,6 +29,46 @@ function readSaved(key,fallback,validate){
   try{return validate(JSON.parse(raw))}catch{preserveInvalidData(key,raw);return fallback}
 }
 function load(){return readSaved(KEY,freshGame(),validateGame)}
+function readLastExport(){
+  try{const raw=localStorage.getItem(KEYS.lastExport);return raw&&Number.isFinite(Date.parse(raw))&&new Date(raw).toISOString()===raw?raw:null}catch{return null}
+}
+function backupStatus(){return lastExport?`Last export started: ${new Date(lastExport).toLocaleString()}`:'No backup export recorded on this device.'}
+function refreshBackupStatus(){
+  const status=document.querySelector('[data-backup-status]'),note=document.querySelector('[data-backup-date-warning]');
+  if(status)status.textContent=backupStatus();if(note)note.textContent=backupDateWarning;
+}
+function updateNotice(){return `<section class="update-notice card soft" data-update-notice ${!availableVersion||dismissedVersion===availableVersion?'hidden':''} aria-label="App update">
+  <p role="status" data-update-message>${text(updateWarning||`Version ${availableVersion} is ready. Save your current game and reload when you’re ready.`)}</p>
+  <div class="toolbar">${button('Update now','update-now','class="primary"')}${button('Later','update-later','class="secondary"')}</div></section>`}
+function refreshUpdateNotice(){
+  const notice=document.querySelector('[data-update-notice]'),message=document.querySelector('[data-update-message]');
+  if(notice)notice.hidden=!availableVersion||dismissedVersion===availableVersion;
+  if(message)message.textContent=updateWarning||`Version ${availableVersion} is ready. Save your current game and reload when you’re ready.`;
+}
+function applyUpdate(){
+  if(!availableVersion)return;
+  if(!persist()){updateWarning='Your game could not be saved. Export a backup before updating.';refreshUpdateNotice();return}
+  location.reload();
+}
+function watchUpdates(){
+  if(!('serviceWorker'in navigator)||location.protocol==='file:')return;
+  const workers=navigator.serviceWorker;
+  const askVersion=()=>{try{workers.controller?.postMessage({type:'GET_APP_VERSION'})}catch{}};
+  workers.addEventListener('controllerchange',askVersion);
+  workers.addEventListener('message',event=>{
+    if(event.source!==workers.controller||event.data?.type!=='APP_VERSION'||typeof event.data.version!=='string'||event.data.version.length>32||!/^\d+\.\d+(?:\.\d+)?$/.test(event.data.version))return;
+    const version=event.data.version;
+    // An older controller can briefly coexist with freshly downloaded page code.
+    const a=version.split('.').map(Number),b=APP_VERSION.split('.').map(Number);
+    const newer=a.some((part,i)=>part>(b[i]??0)&&a.slice(0,i).every((value,j)=>value===(b[j]??0)));
+    if(!newer)return;
+    availableVersion=version;updateWarning='';refreshUpdateNotice();
+  });
+  workers.register('./sw.js',{updateViaCache:'none'}).then(registration=>{workerRegistration=registration;askVersion()}).catch(console.warn);
+  document.addEventListener?.('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&workerRegistration)void workerRegistration.update().catch(()=>{});
+  });
+}
 function storeGet(key,fallback){return readSaved(key,fallback,key===ARCHIVE_KEY?validateArchive:validatePresets)}
 function updateSaveStatus(){const el=document.querySelector('[data-save-status]');if(el)el.textContent=storageWarning||'Autosaved on this device. Offline after first load.'}
 function storePut(key,value){
@@ -110,7 +152,7 @@ function layout(content){
   const r=state.rounds.length,done=gameOver(state.rounds,state.names.length);
   const tabs=[['library','Games'],['game','Reference'],['score','Score'],['board','Scoreboard'],['rules','Rules']];
   return `<main class="app" ${pending?'inert aria-hidden="true"':''}><header class="top app-header"><div class="brand-lockup"><img class="brand-logo" src="./icons/icon-180.png" width="44" height="44" alt=""><div><h1 class="brand">Hand & Foot</h1><div class="eyebrow">${state.mode}-player scorekeeper</div><div class="current-game-name">${text(activeGame(library).title)}</div></div></div><div class="header-actions"><span class="pill">${done?'Game over':`Round ${r+1}`}</span>${button(icon('settings'),'settings','class="settings-button secondary" aria-label="Settings"')}</div></header>
-    <section class="screen">${content}</section>
+    ${updateNotice()}<section class="screen">${content}</section>
     <footer class="bottom"><div class="footer-actions"><div class="backup-actions">${button('Export backup','export','class="secondary full"')}${button('Import backup','import','class="secondary full"')}</div>${state.screen==='library'?'':`<div class="new-game-action">${button('Save & return to Games','save-game','class="secondary full"')}${button('New game','new-game','class="secondary full"')}</div>`}</div>
     <p class="status" data-save-status role="status">${text(storageWarning||'Autosaved on this device. Offline after first load.')}</p>${recoveryNotice?`<p class="note" role="status">${text(recoveryNotice)}</p>`:''}<input type="file" id="import-file" accept="application/json,.json" hidden></footer></main>
     <nav class="bottom-nav" aria-label="Main navigation" ${pending?'inert aria-hidden="true"':''}>${tabs.map(([id,caption])=>`<button type="button" data-action="screen" data-value="${id}" class="nav-tab ${state.screen===id?'active':''}" aria-current="${state.screen===id?'page':'false'}"><span class="nav-icon" aria-hidden="true">${icon(id)}</span><span>${caption}</span></button>`).join('')}</nav>${pendingDialog()}<p class="sr-only" role="status" aria-live="polite" data-announcement>${text(announcement)}</p>`;
@@ -154,7 +196,7 @@ function libraryScreen(){
     ${finished.length?`<details id="completed-games" class="finished-games" ${completedOpen?'open':''}><summary>Completed games · ${finished.length}</summary>${finished.map(savedGameCard).join('')}</details>`:''}
     ${removed.length?`<details id="removed-games" class="finished-games" ${removedOpen?'open':''}><summary>Removed games · ${removed.length}</summary><p class="muted">Removed games stay here until you restore them. They are included in your backups.</p>${removed.map(item=>`<article class="card removed-game"><h3>${text(item.title)}</h3><p class="muted">${text(item.game.names.join(' / '))} · ${item.game.mode} players</p><p class="muted">Removed ${text(new Date(item.deletedAt).toLocaleDateString())}</p>${button('Restore game','restore-game',`class="secondary full" data-id="${text(item.id)}" aria-label="Restore ${text(item.title)}"`)}</article>`).join('')}</details>`:''}`;
 }
-function settingsScreen(){return `<h2 class="title">Settings</h2><section class="card"><h3>Appearance</h3><p class="muted">Use your device’s appearance or choose a light or dark background.</p><div>${segment([['system','System'],['light','Light'],['dark','Dark']],settings.appearance,'appearance')}</div></section><section class="card"><h3>Saved games & backups</h3><p>Your games are stored on this device. A backup includes every saved game, removed game, and unfinished scoring entry.</p><p>Import adds games to your library. Your existing games are kept.</p></section><section class="card"><h3>About</h3><p>Hand & Foot Scorekeeper · ${APP_VERSION}</p><p class="muted">Custom house rules · Offline after first load</p></section>`}
+function settingsScreen(){return `<h2 class="title">Settings</h2><section class="card"><h3>Appearance</h3><p class="muted">Use your device’s appearance or choose a light or dark background.</p><div>${segment([['system','System'],['light','Light'],['dark','Dark']],settings.appearance,'appearance')}</div></section><section class="card"><h3>Saved games & backups</h3><p>Your games are stored on this device. A backup includes every saved game, removed game, and unfinished scoring entry.</p><p>Import adds games to your library. Your existing games are kept.</p><p class="backup-status" data-backup-status role="status">${text(backupStatus())}</p><p class="muted">Check Files or Downloads to confirm your backup was saved.</p><p class="muted" data-backup-date-warning>${text(backupDateWarning)}</p></section><section class="card"><h3>About</h3><p>Hand & Foot Scorekeeper · ${APP_VERSION}</p><p class="muted">Custom house rules · Offline after first load</p>${availableVersion?`<p>Version ${text(availableVersion)} is available.</p>${button('Save & update','update-now','class="secondary full"')}`:''}</section>`}
 function presetsSection(){const a=storeGet(PRESETS_KEY,[]);return `<h2 class="title">Saved name sets</h2>${button('Save current names','save-preset','class="secondary"')}${a.map((p,i)=>`<div class="row"><span>${text(p.names.join(' / '))}</span>${button('Use','use-preset',`class="secondary" data-index="${i}"`)}</div>`).join('')}`}
 function boardScreen(){let n=state.names.length,totals=standings(state.rounds,n),max=Math.max(...totals),done=gameOver(state.rounds,n),winners=totals.map((v,i)=>v===max?i:-1).filter(i=>i>=0);return `<div class="scoreboard-heading"><h2 class="title" id="scoreboard-title" tabindex="-1">Scoreboard</h2><p class="muted">Round ${done?state.rounds.length:state.rounds.length+1} of ${state.rounds.length>4||state.rounds.length===4&&!done?5:4} · ${state.mode} players</p><p class="muted">Edit names at any time. Scores stay intact.</p></div><div class="scoreboard-cards">${state.names.map((name,i)=>`<div class="stat namefield scoreboard-card"><div class="scoreboard-card-head"><small>${state.mode===2?'Player':'Team'} ${i+1}</small><strong class="scoreboard-total">${fmt(totals[i])}</strong></div><input type="text" maxlength="36" data-name="${i}" value="${text(name)}" aria-label="Name for ${state.mode===2?'player':'team'} ${i+1}"><small class="scoreboard-total-label">Total points</small></div>`).join('')}</div>${state.rounds.length?`<div class="tablewrap"><table><caption class="sr-only">Scores by round; a star marks the side that went out.</caption><thead><tr><th scope="col">Round</th>${state.names.map((_,i)=>`<th scope="col" data-label="${i}">${text(label(i))}</th>`).join('')}</tr></thead><tbody>${state.rounds.map((r,i)=>`<tr><th scope="row">${i===4?'5 (TB)':i+1}</th>${r.scores.map((v,j)=>`<td>${fmt(v)}${r.out===j?' ★':''}</td>`).join('')}</tr>`).join('')}<tr><th scope="row">Total</th>${totals.map(v=>`<th>${fmt(v)}</th>`).join('')}</tr></tbody></table></div><p>${button('Edit last round','undo','class="secondary"')}</p>`:'<p class="muted scoreboard-empty">No rounds saved yet.</p>'}${done?`<div class="card hero"><h2>🏆 ${winners.length===1?`${text(label(winners[0]))} wins!`:'Game ends in a tie'}</h2></div>`:button(`Enter round ${state.rounds.length+1} scores →`,'go-score','class="primary full scoreboard-next"')}${done?button('Play again with these players','rematch','class="secondary full"'):''}<div class="scoreboard-actions">${button('▦  Your games & history  ›','library','class="scoreboard-link"')}${button('↗  Share results  ›','share','class="scoreboard-link"')}</div>${presetsSection()}<h2 class="title">Game settings</h2><p class="field-label">Number of players</p>${segment([[2,'2'],[4,'4'],[6,'6']],state.mode,'mode')}<p class="muted">${state.mode===2?'2 individual players, 3 decks, 1 red + 1 black book to go out':`${n} partnerships, ${state.mode+1} decks, 1 red + 2 black books to go out`}</p>`}
 function focusAction(action,id,value){
@@ -226,9 +268,16 @@ async function shareResults(){
 }
 function copyGame(){const totals=standings(state.rounds,state.names.length);return `Hand & Foot · ${state.mode} players\n`+state.rounds.map((r,i)=>`Round ${i+1} (${r.method}): ${state.names.map((_,j)=>`${label(j)} ${r.scores[j]}`).join(', ')}`).join('\n')+`\nTotals: ${state.names.map((_,i)=>`${label(i)} ${totals[i]}`).join(', ')}`;}
 function exportGame(){
-  const snapshot=saveActive(library,state);
-  const blob=new Blob([JSON.stringify({app:'Hand & Foot Scorekeeper',exportedAt:new Date().toISOString(),game:compatibleGame(state),gameLibrary:snapshot,completedGames:archiveForLibrary(snapshot),namePresets:storeGet(PRESETS_KEY,[])},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`hand-foot-backup-${new Date().toISOString().slice(0,10)}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  let url,a;
+  try{
+    const exportedAt=new Date().toISOString(),snapshot=saveActive(library,state);
+    const blob=new Blob([JSON.stringify({app:'Hand & Foot Scorekeeper',exportedAt,game:compatibleGame(state),gameLibrary:snapshot,completedGames:archiveForLibrary(snapshot),namePresets:storeGet(PRESETS_KEY,[])},null,2)],{type:'application/json'});
+    url=URL.createObjectURL(blob);a=document.createElement('a');a.href=url;a.download=`hand-foot-backup-${exportedAt.slice(0,10)}.json`;document.body.append(a);a.click();
+    lastExport=exportedAt;backupDateWarning='';
+    try{localStorage.setItem(KEYS.lastExport,exportedAt)}catch{backupDateWarning='The backup download started, but its date could not be remembered on this device.'}
+    refreshBackupStatus();return true;
+  }catch{alert('The backup could not be prepared. Your game is still open; please try exporting again.');return false}
+  finally{a?.remove();if(url)setTimeout(()=>URL.revokeObjectURL(url),1000)}
 }
 function openNewDialog(mode=state.mode,returnFocus={action:'new-game'}){pending={type:'new',mode,title:`Game ${library.games.filter(item=>!item.deletedAt).length+1}`,returnToResult:pending?.type==='result',returnFocus};draw();document.querySelector('#game-title')?.focus?.()}
 function cancelDialog(){
@@ -327,6 +376,8 @@ app.addEventListener('click',e=>{
     case 'rename-game':{const item=library.games.find(g=>g.id===el.dataset.id);if(item){pending={type:'rename',id:item.id,title:item.title,returnFocus:{action:'rename-game',id:item.id}};draw();document.querySelector('#game-title')?.focus?.()}break}
     case 'save-game':{const next=saveActive(library,{...state,screen:'library'});if(selectLibrary(next))state.screen='library';break}
     case 'settings':set(()=>state.screen='settings');break;
+    case 'update-now':applyUpdate();break;
+    case 'update-later':dismissedVersion=availableVersion;refreshUpdateNotice();focusHeading();break;
     case 'appearance':{const next=validateSettings({appearance:val});if(storePut(KEYS.settings,next)){settings=next;applyAppearance();draw()}else alert('The appearance setting could not be saved.');break}
     case 'cancel':cancelDialog();break;
     case 'confirm':confirmDialog();break;
@@ -375,5 +426,5 @@ const appearanceMedia=typeof matchMedia==='function'?matchMedia('(prefers-color-
 appearanceMedia?.addEventListener?.('change',()=>{if(settings.appearance==='system')applyAppearance()});
 applyAppearance();
 // Never replace focused inputs or a pending click target on blur/change.
-if('serviceWorker'in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('./sw.js').catch(console.warn);
+watchUpdates();
 draw();
