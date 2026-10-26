@@ -15,19 +15,19 @@ export function roundFor(totals,mode=2){
 export function archiveFor(game){return {id:1,date:'2026-10-16T12:00:00.000Z',mode:game.mode,names:[...game.names],rounds:structuredClone(game.rounds),finished:scoring.gameOver(game.rounds,game.names.length)}}
 export function appHarness(game=scoring.freshGame(),options={}){
   const storage=options.storage??memoryStorage({[data.KEYS.game]:JSON.stringify(game)});
-  const handlers={},documentHandlers={},alerts=[],nodes=new Map();let blob;
+  const handlers={},documentHandlers={},windowHandlers={},alerts=[],nodes=new Map();let blob;
   const rootElement={dataset:{},style:{}};
   const app={innerHTML:'',addEventListener:(name,handler)=>handlers[name]=handler};
   const node=selector=>{if(!nodes.has(selector))nodes.set(selector,{textContent:'',innerHTML:'',disabled:false});return nodes.get(selector)};
   const context=vm.createContext({__modules:{'./scoring.mjs':scoring,'./data.mjs':data,'./games.mjs':games},structuredClone,console,Blob,Date,
-    localStorage:storage,navigator:options.navigator??{},location:options.location??{protocol:'file:'},alert:message=>alerts.push(message),matchMedia:options.matchMedia,
+    addEventListener:(name,handler)=>windowHandlers[name]=handler,localStorage:storage,navigator:options.navigator??{},location:options.location??{protocol:'file:'},alert:message=>alerts.push(message),matchMedia:options.matchMedia,
     document:{documentElement:rootElement,visibilityState:'visible',addEventListener:(name,handler)=>documentHandlers[name]=handler,querySelector:selector=>selector==='#app'?app:node(selector),querySelectorAll:()=>[],body:{append(){}},createElement:()=>({click(){if(options.downloadError)throw options.downloadError},remove(){}})},
     URL:{createObjectURL:value=>{blob=value;return 'blob:test'},revokeObjectURL(){}},setTimeout(){}
   });
   vm.runInContext(source+'\nglobalThis.__test={state:()=>state,library:()=>library,settings:()=>settings,stack:()=>undoStack.length,exportGame,importFile,shareResults};',context);
   const api=context.__test;
   const inputElement=(kind,value,dataset={})=>({value,dataset,matches:selector=>selector===kind});
-  return {storage,handlers,documentHandlers,alerts,app,api,node,rootElement,
+  return {storage,handlers,documentHandlers,windowHandlers,alerts,app,api,node,rootElement,
     click(action,dataset={}){handlers.click({target:{closest:()=>({disabled:false,dataset:{action,...dataset}})}})},
     input(kind,value,dataset){const element=inputElement(kind,value,dataset);handlers.input({target:element});return element},
     change(element){handlers.change({target:element})},

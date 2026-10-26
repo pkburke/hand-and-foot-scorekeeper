@@ -29,7 +29,7 @@ spacing:
 
 Quiet Contrast is the approved visual direction: calm blue surfaces, cyan actions, and restrained magenta accents connecting to the existing H&F artwork. A scorekeeper should be able to scan the current side, enter scores, and check standings while the group plays with real cards.
 
-This document describes the implementation in `styles.css`. The 3.3.2 refinement has automated regression and token-contrast checks; fresh rendered visual review remains pending in `TESTING.md`.
+This document describes the implementation in `styles.css`. The 3.3.3 closeout has automated regression checks and current Chromium layout/interaction verification. Physical iPhone and live-game acceptance remain pending in `TESTING.md`.
 
 ## Colors
 
@@ -63,7 +63,9 @@ Primary actions are solid cyan with contrasting text. Secondary actions use the 
 
 Scoring steps sit within a single entry panel. The step subtotal is separated by a rule, not another nested card. The provisional score and next action form a distinct group. Going-out choices use whole clickable rows, with a radio indicator plus a visible selected border and surface.
 
-Rules and Settings use section spacing and dividers rather than a stack of identical cards. Saved and completed games retain cards, aligned totals, and a stable action grid. Result dialogs announce the winner in their heading and retain all existing follow-up actions.
+Rules and Settings use section spacing and dividers rather than a stack of identical cards. Saved and completed games retain cards, aligned totals, and a stable action grid. Result dialogs initially focus their winner heading without scrolling past it. Narrow result containers stack names and scores; all existing follow-up actions remain available.
+
+Save failures and conflicting windows show a persistent recovery notice near the top of the viewport without shifting the form. Its actions use the warning palette with readable borders. Focused fields remain usable below the notice.
 
 Every interactive element needs visible focus, active, hover where supported, and disabled styling. Keep the existing focus management and live save/update announcements. Transitions apply only when reduced motion is not requested.
 

@@ -65,6 +65,18 @@ Unreadable stored data is preserved under its storage key plus `-recovery`, with
 
 The last-export timestamp records download initiation, not confirmed file retention. It is local bookkeeping, excluded from backups. Failure to store that timestamp must not prevent scoring or export or report a false game-save failure.
 
+## Concurrent windows and save recovery
+
+The app holds an origin-scoped Web Lock for the current writer when the browser supports it. Other current-version windows keep their local draft available for export but cannot write the collection. Close the writer and reload another window to continue there. Web Locks are released when their owning document closes; the implementation uses `ifAvailable` so a second window can immediately explain its paused state.
+
+Every library commit and import also checks the raw saved-library value against the value loaded or successfully committed by that window. A changed value permanently pauses writes until reload. A storage event exposes that state promptly without redrawing focused inputs; the pre-write comparison also works when no event was delivered. The comparison is the compatibility fallback when Web Locks are unavailable; it is not an atomic cross-process transaction. Use one scoring window on such browsers.
+
+Older versions do not participate in writer coordination. During rollout, export important drafts and close or reload older app windows. No game/backup schema change is required.
+
+Failed writes and conflicts use a persistent recovery notice. Normal storage failures offer retry; conflicting windows offer reload plus export. Unsaved scoring changes install a before-unload warning, which is a browser convenience rather than durable recovery: the local draft's backup remains the recovery path. Appearance and export-date bookkeeping stay separate from game-library conflicts.
+
+References: [Web Locks API](https://www.w3.org/TR/web-locks/) and [WebKit support](https://webkit.org/blog/12445/new-webkit-features-in-safari-15-4/).
+
 ## Offline updates
 
 The app checks its service worker when returning to the foreground. A newer ready version offers **Update now** and **Later** without redrawing focused scoring fields or automatically reloading. Updating saves the current library and draft first. If saving fails, the app stays open and asks for a backup. A deferred update remains available in Settings, including when Settings was already open when the update arrived.

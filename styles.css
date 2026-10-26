@@ -79,7 +79,7 @@ small { line-height: 1.5; }
 .app { max-width: 680px; min-height: 100dvh; margin: 0 auto; padding: var(--space-6) var(--space-5) calc(7.5rem + env(safe-area-inset-bottom, 0px)); background: var(--page); font-size: .9375rem; line-height: 1.5; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .app-header { align-items: flex-start; padding-bottom: var(--space-5); border-bottom: 1px solid var(--border); }
-.brand-lockup { display: flex; align-items: flex-start; gap: var(--space-3); flex: 1; min-width: 10rem; }
+.brand-lockup { display: flex; align-items: flex-start; gap: var(--space-3); flex: 1; min-width: min(10rem, 100%); }
 .brand-lockup > div { min-width: 0; }
 .brand-logo { width: 44px; height: 44px; flex: none; }
 .brand { margin: 0; font-size: 1.3125rem; line-height: 1.25; font-weight: 700; }
@@ -253,7 +253,7 @@ thead th { font-weight: 600; }
 
 /* Navigation stays thumb-friendly, with an explicit selected state. */
 .bottom-nav { position: fixed; inset: auto 0 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 2px; padding: 8px max(8px, calc((100vw - 680px) / 2)) calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); background: var(--surface); }
-.nav-tab { display: flex; flex: 1 1 3.4rem; min-width: 3.4rem; min-height: 56px; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 8px 2px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: .6875rem; font-weight: 500; }
+.nav-tab { hyphens: auto; display: flex; flex: 1 1 3.4rem; min-width: 3.4rem; min-height: 56px; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 8px 2px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: .6875rem; font-weight: 500; }
 .nav-tab.active { background: var(--soft); color: var(--accent-text); font-weight: 700; }
 .nav-icon { display: flex; align-items: center; justify-content: center; }
 .nav-icon svg { width: 22px; height: 22px; }
@@ -264,7 +264,7 @@ thead th { font-weight: 600; }
 .game-dialog h2 { margin: 0 0 var(--space-3); font-size: 1.5rem; line-height: 1.25; }
 .dialog-actions { margin-top: var(--space-6); }
 .game-dialog .segments button { font-size: .8125rem; }
-.result-dialog { position: relative; }
+.result-dialog { position: relative; container: result / inline-size; }
 .result-symbol { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto var(--space-4); border-radius: var(--radius-panel); background: var(--soft); color: var(--accent-text); }
 .result-symbol svg { width: 30px; height: 30px; }
 .result-dialog h2 { text-align: center; font-size: 1.75rem; }
@@ -306,4 +306,16 @@ thead th { font-weight: 600; }
 }
 @media (prefers-reduced-motion: no-preference) {
   button { transition: background-color 150ms ease-out, color 150ms ease-out; }
+}
+
+/* Keep failed-save recovery in view without replacing the active scoring form. */
+.save-notice { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); width: min(calc(100% - 24px), 616px); max-height: 45dvh; overflow: auto; overscroll-behavior: contain; z-index: 60; margin: 0; }
+.save-notice p { margin-bottom: var(--space-3); }
+.save-notice .toolbar { gap: var(--space-2); }
+.save-notice button { border-color: var(--note-text); color: var(--note-text); background: var(--surface); }
+.save-notice button:hover { background: var(--note-bg); }
+@container result (max-width: 18rem) {
+  .result-standings li { align-items: stretch; flex-direction: column; gap: var(--space-2); }
+  .result-standings strong { text-align: left; }
+  .result-standings strong small { display: inline; margin-left: var(--space-2); }
 }

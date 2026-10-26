@@ -39,8 +39,11 @@ BACKUPS AND SETTINGS
 Games are local to this browser, device, and site address. There is no automatic
 sync. Use Export backup, confirm the JSON file is saved in Files or Downloads,
 then Import backup to transfer games. Imports add to your existing collection.
-Backups include removed games and unfinished entries. If autosave fails, keep
-the app open and export before reloading or leaving.
+Backups include removed games and unfinished entries. Use one app window for
+scorekeeping. An older or secondary window pauses saving to protect newer
+games; export its unfinished entries before reloading. If autosave fails, the
+recovery notice offers Export backup and Try saving. Keep the app open and
+export before reloading or leaving.
 
 Settings offers System, Light, and Dark appearance. Install on your Home Screen
 through your browser's sharing/install option. When an update is ready, choose

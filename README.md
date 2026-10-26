@@ -74,7 +74,9 @@ Use **Export backup** to download a JSON file containing all games, completed re
 
 To move your games, export from the original browser or site, open the destination, and choose **Import backup**. Import adds games to the collection. Identical matching saves are not duplicated, while differing versions are retained separately. Appearance settings and export history stay local to each browser. Older game-only backups are also supported, though they may not contain unfinished entries.
 
-If the app reports an autosave problem, keep it open and export a backup of the current scores before reloading or leaving.
+Use one app window for scorekeeping. If another window is keeping score or has updated the collection, saving in the older window pauses to protect newer games. Its unfinished entries remain available to export. Close the other window and reload when you are ready to use the latest saved collection.
+
+If autosave fails, a visible recovery notice offers **Export backup** and **Try saving**. Keep the app open and export the current scores before reloading or leaving. The browser also attempts to warn before discarding unsaved scoring changes.
 
 ## Appearance, installation, and updates
 

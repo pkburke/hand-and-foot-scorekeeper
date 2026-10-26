@@ -3,13 +3,44 @@ import {KEYS,validateGame,validateArchive,validatePresets,validateLibrary,valida
 import {activeGame,makeLibrary,saveActive,addGame,openGame,renameGame,rematchGame,removeGame,restoreGame,archiveForLibrary,mergeBackup} from './games.mjs';
 const KEY=KEYS.game,ARCHIVE_KEY=KEYS.archive,PRESETS_KEY=KEYS.presets;
 const undoStack=[];let storageWarning='',recoveryNotice='',recoveryBlocked=false;
-let numericEdit=null;
+let numericEdit=null,libraryBaseline;
 let state=load();
 let library=readSaved(KEYS.games,null,validateLibrary)??makeLibrary(state,storeGet(ARCHIVE_KEY,[]));
 state=structuredClone(activeGame(library).game);
 let settings=readSaved(KEYS.settings,{appearance:'system'},validateSettings);
-const APP_VERSION='3.3.2';
+const APP_VERSION='3.3.3';
 let lastExport=readLastExport(),backupDateWarning='';
+let savedGameFingerprint=gameFingerprint(state),staleLibrary=false,savePending=false;
+let writerState=navigator.locks?.request?'pending':'fallback';
+const STALE_MESSAGE='Another app window updated your games. Saving in this window is paused to protect the newer scores. Export any unsaved entries here before reloading.';
+const OTHER_WRITER_MESSAGE='Another app window is keeping score. Close that window, then reload here to continue. Export any unsaved entries here first.';
+function gameFingerprint(game){return JSON.stringify({...game,screen:'game'})}
+function saveProblem(){return staleLibrary?STALE_MESSAGE:writerState==='blocked'?OTHER_WRITER_MESSAGE:savePending?'Checking which app window can save. Your entries are still here.':storageWarning}
+function saveNotice(){const problem=saveProblem(),conflict=staleLibrary||writerState==='blocked';return `<section class="save-notice note" data-save-notice role="alert" ${problem?'':'hidden'}><p data-save-problem>${text(problem)}</p><div class="toolbar">${button('Export backup','export','class="secondary"')}${button('Reload saved games','reload-games',`class="secondary" data-reload-games ${conflict?'':'hidden'}`)}${button('Try saving','retry-save',`class="secondary" data-retry-save ${conflict?'hidden':''}`)}</div></section>`}
+function markStale(){staleLibrary=true;savePending=false;updateSaveStatus()}
+function canWriteLibrary(){
+  if(staleLibrary||writerState==='blocked'){updateSaveStatus();return false}
+  try{if(localStorage.getItem(KEYS.games)!==libraryBaseline){markStale();return false}}
+  catch{storageWarning='Device storage is unavailable. Export a backup to keep your scores.';updateSaveStatus();return false}
+  if(writerState==='pending'){savePending=true;updateSaveStatus();return false}
+  return true;
+}
+function recordLibrary(next){library=next;libraryBaseline=JSON.stringify(validateLibrary(next));savedGameFingerprint=gameFingerprint(activeGame(next).game);storageWarning='';savePending=false;updateSaveStatus()}
+function watchConcurrentWindows(){
+  globalThis.addEventListener?.('storage',event=>{if((event.key===KEYS.games||event.key===null)&&event.newValue!==libraryBaseline)markStale()});
+  globalThis.addEventListener?.('beforeunload',event=>{
+    if(saveProblem()&&gameFingerprint(state)!==savedGameFingerprint){event.preventDefault();event.returnValue=''}
+  });
+  if(writerState!=='pending')return;
+  try{
+    // Hold one writer for this origin; another current-version window may recover/export but cannot replace its library.
+    Promise.resolve(navigator.locks.request('hand-foot-scorekeeper-library',{ifAvailable:true},lock=>{
+      writerState=lock?'owned':'blocked';const retry=savePending;savePending=false;
+      if(lock&&retry)persist();else updateSaveStatus();
+      if(lock)return new Promise(()=>{});
+    })).catch(()=>{writerState='fallback';const retry=savePending;savePending=false;if(retry)persist();else updateSaveStatus()});
+  }catch{writerState='fallback';updateSaveStatus()}
+}
 let availableVersion='',dismissedVersion='',updateWarning='',workerRegistration=null;
 let pending=null;let ruleQuery='';let renderedScreen=null,completedOpen=false,removedOpen=false,announcement='';const app=document.querySelector('#app');
 function preserveInvalidData(key,raw){
@@ -24,7 +55,7 @@ function preserveInvalidData(key,raw){
 }
 function readSaved(key,fallback,validate){
   let raw;
-  try{raw=localStorage.getItem(key)}catch{storageWarning='Device storage is unavailable. Export a backup to keep your scores.';return fallback}
+  try{raw=localStorage.getItem(key);if(key===KEYS.games)libraryBaseline=raw}catch{storageWarning='Device storage is unavailable. Export a backup to keep your scores.';return fallback}
   if(raw===null)return fallback;
   try{return validate(JSON.parse(raw))}catch{preserveInvalidData(key,raw);return fallback}
 }
@@ -73,9 +104,23 @@ function watchUpdates(){
   });
 }
 function storeGet(key,fallback){return readSaved(key,fallback,key===ARCHIVE_KEY?validateArchive:validatePresets)}
-function updateSaveStatus(){const el=document.querySelector('[data-save-status]');if(el)el.textContent=storageWarning||'Autosaved on this device. Offline after first load.'}
+function updateSaveStatus(){
+  const problem=saveProblem(),conflict=staleLibrary||writerState==='blocked';
+  const el=document.querySelector('[data-save-status]');if(el)el.textContent=problem||'Autosaved on this device. Offline after first load.';
+  const notice=document.querySelector('[data-save-notice]'),message=document.querySelector('[data-save-problem]');
+  const revealing=notice?.hidden&&problem;
+  if(notice)notice.hidden=!problem;if(message&&message.textContent!==problem)message.textContent=problem;
+  if(revealing&&typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{
+    const active=document.activeElement;if(pending||notice.hidden||!active?.matches?.('input,select'))return;
+    const field=active.getBoundingClientRect(),banner=notice.getBoundingClientRect(),nav=document.querySelector('.bottom-nav')?.getBoundingClientRect();
+    const top=banner.bottom+12,bottom=innerHeight-(nav?.height||0)-12;
+    if(field.top<top||field.bottom>bottom)globalThis.scrollBy?.(0,field.top-(top+Math.max(0,(bottom-top-field.height)/2)));
+  });
+  const reload=document.querySelector('[data-reload-games]'),retry=document.querySelector('[data-retry-save]');
+  if(reload)reload.hidden=!conflict;if(retry)retry.hidden=conflict;
+}
 function storePut(key,value){
-  if(recoveryBlocked)return false;
+  if(recoveryBlocked||key===PRESETS_KEY&&!canWriteLibrary())return false;
   try{localStorage.setItem(key,JSON.stringify(value));if(key===KEY)storageWarning='';updateSaveStatus();return true}
   catch{storageWarning='Changes could not be saved on this device. Export a backup to keep your scores.';updateSaveStatus();return false}
 }
@@ -87,10 +132,10 @@ function remember(input=null){
   if(undoStack.length>20)undoStack.shift();
 }
 function commitLibrary(next,includeArchive=false){
-  if(recoveryBlocked)return false;
+  if(recoveryBlocked||!canWriteLibrary())return false;
   try{
     saveBackup(localStorage,{game:compatibleGame(activeGame(next).game),gameLibrary:next,...(includeArchive?{completedGames:archiveForLibrary(next)}:{})});
-    library=next;storageWarning='';updateSaveStatus();return true;
+    recordLibrary(next);return true;
   }catch{storageWarning='Changes could not be saved on this device. Export a backup to keep your scores.';updateSaveStatus();return false}
 }
 function persist(){return commitLibrary(saveActive(library,state))}
@@ -148,10 +193,10 @@ function resultDialog(){
   const ranked=totals.map((total,index)=>({index,total})).sort((a,b)=>b.total-a.total),tied=totals.filter(total=>total===best).length>1;
   return `<div class="dialog-backdrop"><section class="game-dialog result-dialog card" role="dialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="result-description">
     <div class="result-symbol">${icon('trophy')}</div>
-    <h2 id="dialog-title">${tied?'Game ends in a tie':`${text(label(ranked[0].index))} wins!`}</h2>
+    <h2 id="dialog-title" tabindex="-1">${tied?'Game ends in a tie':`${text(label(ranked[0].index))} wins!`}</h2>
     <p id="result-description" class="muted">${text(activeGame(library).title)} · ${state.rounds.length} rounds played</p>
     <h3 class="result-scores-title">Final scores</h3><ol class="result-standings" aria-label="Final standings">${ranked.map(({index,total})=>`<li class="${total===best?'result-leader':''}"><div class="result-name"><span>${text(label(index))}</span>${total===best?`<small>${tied?'Tied for first':'Winner'}</small>`:''}</div><strong>${fmt(total)}<small>points</small></strong></li>`).join('')}</ol>
-    ${storageWarning?`<p class="note" role="alert">${text(storageWarning)}</p>${button('Export backup','export','class="secondary full"')}`:''}
+    ${saveProblem()?`<p class="note" role="alert">${text(saveProblem())}</p>${button('Export backup','export','class="secondary full"')}`:''}
     <div class="result-actions">${button('View results','result-board','class="primary full"')}${button('Play again','rematch','class="secondary full"')}${button('New game','new-game','class="secondary full"')}${button('Back to Games','save-game','class="secondary full"')}</div>
     </section></div>`;
 }
@@ -159,9 +204,9 @@ function layout(content){
   const r=state.rounds.length,done=gameOver(state.rounds,state.names.length);
   const tabs=[['library','Games'],['game','Reference'],['score','Score'],['board','Scoreboard'],['rules','Rules']];
   return `<main class="app" ${pending?'inert aria-hidden="true"':''}><header class="top app-header"><div class="brand-lockup"><img class="brand-logo" src="./icons/icon.svg" width="44" height="44" alt=""><div><h1 class="brand">Hand & Foot</h1><div class="eyebrow">${state.mode}-player scorekeeper</div><div class="current-game-name">${text(activeGame(library).title)}</div></div></div><div class="header-actions"><span class="pill">${done?'Game over':`Round ${r+1}`}</span>${button(icon('settings'),'settings','class="settings-button secondary" aria-label="Settings"')}</div></header>
-    ${updateNotice()}<section class="screen" data-screen="${state.screen}">${content}</section>
+    ${saveNotice()}${updateNotice()}<section class="screen" data-screen="${state.screen}">${content}</section>
     <footer class="bottom"><div class="footer-actions"><div class="backup-actions">${button('Export backup','export','class="secondary full"')}${button('Import backup','import','class="secondary full"')}</div>${state.screen==='library'?'':`<div class="new-game-action">${button('Save & return to Games','save-game','class="secondary full"')}${button('New game','new-game','class="secondary full"')}</div>`}</div>
-    <p class="status" data-save-status role="status">${text(storageWarning||'Autosaved on this device. Offline after first load.')}</p>${recoveryNotice?`<p class="note" role="status">${text(recoveryNotice)}</p>`:''}<input type="file" id="import-file" accept="application/json,.json" hidden></footer></main>
+    <p class="status" data-save-status role="status">${text(saveProblem()||'Autosaved on this device. Offline after first load.')}</p>${recoveryNotice?`<p class="note" role="status">${text(recoveryNotice)}</p>`:''}<input type="file" id="import-file" accept="application/json,.json" hidden></footer></main>
     <nav class="bottom-nav" aria-label="Main navigation" ${pending?'inert aria-hidden="true"':''}>${tabs.map(([id,caption])=>`<button type="button" data-action="screen" data-value="${id}" class="nav-tab ${state.screen===id?'active':''}" aria-current="${state.screen===id?'page':'false'}"><span class="nav-icon" aria-hidden="true">${icon(id)}</span><span>${caption}</span></button>`).join('')}</nav>${pendingDialog()}<p class="sr-only" role="status" aria-live="polite" data-announcement>${text(announcement)}</p>`;
 }
 function gameScreen(){let r=state.rounds.length;let done=gameOver(state.rounds,state.names.length);let black=REQUIRED_BLACK[state.mode];return `<div class="card soft hero"><small>${done?'GAME COMPLETE':`ROUND ${r+1} · MINIMUM TO LAY DOWN`}</small><div class="number">${openingMinimum(r)} points</div></div><h2 class="title">Card values</h2><div class="grid">${[[50,'Jokers'],[20,'2s and Aces'],[10,'8, 9, 10, J, Q, K'],[5,'4, 5, 6, 7']].map(([p,t])=>`<div class="stat"><strong>${p} pts</strong><small>${t}</small></div>`).join('')}</div><div class="grid reference-penalties"><div class="card soft"><b>Red 3</b><div class="negative">−300 if held</div></div><div class="card soft"><b>Black 3</b><div>0 points</div></div></div><h2 class="title">Books required to go out</h2><div class="grid"><div class="stat"><strong class="negative">1 red</strong><small>+500 per book</small></div><div class="stat"><strong>${black} black</strong><small>+300 per book</small></div></div><div class="toolbar reference-actions">${button('Read rulebook','go-rules','class="secondary"')}${done?'':button('Score this round →','go-score','class="primary"')}</div>`}
@@ -218,7 +263,7 @@ function draw(){
   }
   const changed=renderedScreen!==state.screen;renderedScreen=state.screen;
   numericEdit=null;app.innerHTML=layout(state.screen==='game'?gameScreen():state.screen==='score'?scoreScreen():state.screen==='rules'?ruleScreen():state.screen==='review'?reviewScreen():state.screen==='library'?libraryScreen():state.screen==='settings'?settingsScreen():boardScreen());
-  if(pending){document.querySelector(pending.type==='result'?'[data-action="result-board"]':'[data-initial-focus]')?.focus?.();return}
+  if(pending){const target=document.querySelector(pending.type==='result'?'#dialog-title':'[data-initial-focus]');target?.focus?.({preventScroll:pending.type==='result'});return}
   if(!changed&&focused?.action){
     const control=Array.from(document.querySelectorAll('[data-action]')).find(el=>Object.entries(focused).every(([key,value])=>el.dataset[key]===value));
     if(control){control.focus?.();return}
@@ -261,9 +306,11 @@ function refreshScoring(){
 }
 async function importFile(file){
   try{
-    const backup=JSON.parse(await file.text()),merged=mergeBackup(library,state,backup);
+    const backup=JSON.parse(await file.text());
+    if(!canWriteLibrary()){alert(saveProblem());return}
+    const merged=mergeBackup(library,state,backup);
     saveBackup(localStorage,{...backup,game:compatibleGame(activeGame(merged).game),gameLibrary:merged,completedGames:archiveForLibrary(merged)});
-    library=merged;state=structuredClone(activeGame(library).game);undoStack.length=0;pending=null;ruleQuery='';storageWarning='';recoveryBlocked=false;
+    recordLibrary(merged);state=structuredClone(activeGame(library).game);undoStack.length=0;pending=null;ruleQuery='';recoveryBlocked=false;
     draw();alert('Game imported successfully.');
   }catch(error){alert('Could not import this backup: '+error.message)}
 }
@@ -384,6 +431,8 @@ app.addEventListener('click',e=>{
     case 'save-game':{const next=saveActive(library,{...state,screen:'library'});if(selectLibrary(next))state.screen='library';break}
     case 'settings':set(()=>state.screen='settings');break;
     case 'update-now':applyUpdate();break;
+    case 'retry-save':persist();break;
+    case 'reload-games':location.reload();break;
     case 'update-later':dismissedVersion=availableVersion;refreshUpdateNotice();focusHeading();break;
     case 'appearance':{const next=validateSettings({appearance:val});if(storePut(KEYS.settings,next)){settings=next;applyAppearance();draw()}else alert('The appearance setting could not be saved.');break}
     case 'cancel':cancelDialog();break;
@@ -425,7 +474,7 @@ app.addEventListener('keydown',event=>{
     const dialog=document.querySelector('[role="dialog"]'),controls=dialog?.querySelectorAll?.('input,button');
     if(!controls?.length)return;
     const first=controls[0],last=controls[controls.length-1];
-    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+    if(event.shiftKey&&(document.activeElement===first||document.activeElement?.id==='dialog-title')){event.preventDefault();last.focus()}
     else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
   }
 });
@@ -435,3 +484,4 @@ applyAppearance();
 // Never replace focused inputs or a pending click target on blur/change.
 watchUpdates();
 draw();
+watchConcurrentWindows();

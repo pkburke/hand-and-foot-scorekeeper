@@ -1,42 +1,33 @@
-# Web release acceptance — 3.3.2
+# Web release acceptance — 3.3.3
 
-Use https://handandfoottest.theburkeclann.com/ for acceptance. Keep production on its approved version until these checks and live-game testing are complete. Export a backup before testing with valuable games.
+Use https://handandfoottest.theburkeclann.com/ for acceptance. Confirm Settings → About shows **3.3.3** before recording results. Keep production on its approved version until device checks and live-game testing are complete. Export important games before testing and close or reload older app windows; previous versions do not participate in the new writer protection.
 
-Automated regression checks run in GitHub Actions on every push and pull request. Cloudflare deploys separately: a successful deployment is not proof that the test workflow passed.
+GitHub Actions runs regression checks separately from Cloudflare deployment. A deployed page is not proof that CI passed. Local results below describe development verification; confirm the deployed revision separately.
 
 ## Completed development verification
 
-The development report records browser simulations and automated tests separately from physical-device acceptance. It covers: an active six-player draft receiving an update notice without losing focus or Undo; Later and Settings-based updating; saving before reload; failed-save blocking; migration from the previous v3.3 release; a real backup download and import into a separate origin; and export-date persistence.
-
-## Design refinement verification
-
-The 3.3.2 design pass keeps Quiet Contrast and the scoring workflow. It consolidates the stylesheet, strengthens form boundaries and selected states, simplifies Rules and Settings, and replaces utility glyphs with consistent SVG icons. The 123 automated regression checks pass; text and control contrast were checked against the light and dark color tokens.
-
-Fresh browser screenshots and responsive visual acceptance are still pending: the development session blocked browser launches and local preview servers. The browser simulations described above apply to the prior 3.3.1 revision, not this visual pass.
-
-- [ ] **Visual review:** Check Games (including completed and removed games), Reference, calculated and manual Score, round review, Scoreboard, Rules, Settings, and result/new-game dialogs. Cover light and dark themes at narrow phone, tablet, and desktop widths. Include six-player games, long names, negative scores, and enlarged text. Confirm field focus, counter taps, Undo, search, and dialogs behave as before.
-
-## Icon refinement verification
-
-The original installation PNGs are retained. The header and favicon now use a compact path-based SVG; 16px/32px PNG favicon fallbacks and a separate opaque maskable export were added. Games uses stacked score sheets, and the Scoreboard bars have slightly more visual weight.
-
-Standalone SVG/PNG previews were rendered with Sharp and visually inspected at 16, 32, 44, and 64px, including navigation glyphs at 22px in both theme colors. A circular-mask preview was inspected. The maskable foreground's maximum radius is approximately 185px, within the 204.8px guaranteed safe radius at 512px. These are asset-rendering checks, not browser or physical-device acceptance.
-
-- [ ] **Browser and installed icons:** Check favicon appearance, the 44px header logo, and all navigation glyphs in light/dark themes. Install a fresh test shortcut and check the icon silhouette and padding; confirm the mark remains visible under the platform's mask. Existing installed shortcuts may retain older icons.
+- [x] **134 automated checks:** scoring, 2/4/6-player workflows, saved-game lifecycle, corruption recovery, backup merging/rollback, update protection, and eleven new save-safety cases.
+- [x] **Concurrent-window safety in Chromium:** a secondary current-version window cannot erase a newly created game or a newer score. Its draft stays exportable. Closing the writer and reloading resumes the latest collection. Unsaved changes prompt before browser reload.
+- [x] **Save-error recovery in Chromium:** a simulated storage failure exposes Export backup and Try saving while preserving the focused input. The notice remains visible farther down the form; successful retry saves the draft and clears it.
+- [x] **Layout matrix in Chromium:** 96 screen/theme/width/text-size combinations have no horizontal page overflow: Games, Reference, Score, Scoreboard, Rules, and Settings; 320/390/768/1440px; light/dark; ordinary and 200% root text. This is not Safari page zoom or physical-device text scaling.
+- [x] **Result dialog:** narrow/enlarged text opens on the visible winner heading; names and totals remain readable; forward/backward keyboard wrapping works.
+- [x] **Offline and transfer:** actual service-worker install, cold offline reload, new offline scores surviving another reload, navigation-preserved Undo, real backup download, and import into a fresh isolated browser context.
+- [x] **Icon assets:** compact vector header/favicon, dedicated 16px/32px fallbacks, and separate opaque maskable export. Standalone previews and safe-zone measurements passed; installed-device appearance remains below.
 
 ## Physical iPhone acceptance
 
 Record iPhone model: __________  iOS version: __________  Date: __________
 
-- [ ] **Installed app and updates:** Leave an unfinished round, close/reopen or reload the test app, and confirm Settings → About shows 3.3.2. Names, scores, selected team, and unfinished entries must survive. Existing v3.3 needs one reload to acquire the new updater. On a later deployment, Update now/Later should appear; Later must leave the game usable. Updating deliberately resets entry-Undo history, as any reload does.
-- [ ] **Software keyboard:** Enter manual totals and calculated card counts; create/rename a game. Scroll with the keyboard open and confirm inputs and confirmation/cancellation controls remain reachable. Check the scoring selector and going-out controls in 2-, 4-, and 6-player layouts.
-- [ ] **Larger text:** Increase Safari website text size and use larger device text where applicable. Check completed game cards, all three teams, Settings, and dialogs. Labels and buttons must remain readable/reachable without horizontal page scrolling. The round-history table may scroll horizontally.
-- [ ] **VoiceOver:** Navigate the main sections, enter a score, identify field help and the going-out group, open/cancel a game dialog, and remove/restore a disposable game. Confirm focus stays within a modal, returns after cancellation, and reaches the restored game. This requires listening to VoiceOver on the device; a browser accessibility tree is not sufficient.
-- [ ] **Backup and offline use:** Export, find the JSON file in Files/Downloads, and confirm Settings records the export time. Import into another test browser/device and check games/drafts; existing games must remain. Then load the installed app online, enable airplane mode, enter a draft, close/reopen, and verify it survives. Remove/restore a disposable test game offline.
+- [ ] **Installed app and updates:** Confirm 3.3.3. Leave an unfinished round, close/reopen or reload, and check names, scores, selected team, and unfinished entries. On a later deployment, check Update now/Later and Settings-based updating. Deliberate reload resets entry-Undo history. Check the installed icon's silhouette/padding; an existing shortcut may retain older artwork.
+- [ ] **Software keyboard:** Enter manual totals and calculated counts, create/rename a game, and scroll with the keyboard open. Check that fields and confirmation/cancellation controls remain reachable in 2/4/6-player games.
+- [ ] **Larger text:** Increase Safari website text size and device text where applicable. Check the header, three-team cards, Settings, save-recovery notice, and result/new-game dialogs. The winner should be visible when the result opens. Labels and actions must stay readable without horizontal page scrolling; the round table may scroll horizontally.
+- [ ] **VoiceOver:** Navigate main sections, identify field help and the going-out group, enter scores, open/cancel dialogs, and remove/restore a disposable game. Confirm focus stays in modals, returns after cancellation, and reaches the restored game. Listen on the actual device; browser semantics do not establish this result.
+- [ ] **Backup and offline use:** Export and find the JSON in Files/Downloads. Check the export date, import into another test browser/device, and verify existing games are kept. Load online, enable airplane mode, enter a draft, close/reopen, and confirm it survives. Remove/restore a disposable game offline.
+- [ ] **Multiple windows:** In the same browser/site collection, open a second window/tab. Check that its paused-save notice appears and that it cannot overwrite the first window's games. Export any test entries made in the paused window, close the writer, and reload to use the latest collection. Browser/PWA storage containers may be separate; do not assume they share a collection.
 
 ## Live-game acceptance
 
-- [ ] Complete a few ordinary games, including an interruption during scoring, returning to an earlier game, finishing, and starting a rematch. Record scoring/saving errors, confusing navigation, or awkward keyboard/layout behavior.
+- [ ] Complete a few ordinary games, including interruption during scoring, returning to an earlier game, finishing, and rematch. Record scoring/saving errors, confusing navigation, keyboard/layout friction, and any unexpected paused-save notice.
 
 Notes and findings:
 
