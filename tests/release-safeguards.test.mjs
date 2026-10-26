@@ -19,7 +19,7 @@ function updatingApp(game=freshGame()){
 
 test('A fresh app queries its controlling worker and ignores matching, older, or malformed replies',async()=>{
   const app=updatingApp();await app.ready();assert.equal(app.queries[0].type,'GET_APP_VERSION');app.controllerChange();assert.equal(app.queries.length,2);
-  for(const version of ['3.3.1','3.3','3.2.99','not a version',3.4,null,'<b>4.0.0</b>'])app.signal(version);
+  for(const version of ['3.3.2','3.3.1','3.3','3.2.99','not a version',3.4,null,'<b>4.0.0</b>'])app.signal(version);
   app.signal('9.0.0',{});assert.equal(app.node('[data-update-notice]').hidden,undefined);assert.equal(app.reloads.length,0);
   assert.match(app.app.innerHTML,/data-update-notice hidden/);
 });

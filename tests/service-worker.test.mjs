@@ -37,7 +37,7 @@ test('Cross-origin and non-GET requests are left alone',async()=>{
 test('The service worker reports its release version to the requesting page',()=>{
   const sw=worker(),messages=[];
   sw.handlers.message({data:{type:'GET_APP_VERSION'},source:{postMessage:message=>messages.push(message)}});
-  assert.equal(messages[0].type,'APP_VERSION');assert.equal(messages[0].version,'3.3.1');
+  assert.equal(messages[0].type,'APP_VERSION');assert.equal(messages[0].version,'3.3.2');
   sw.handlers.message({data:{type:'unrelated'},source:{postMessage:message=>messages.push(message)}});assert.equal(messages.length,1);
   assert.doesNotThrow(()=>sw.handlers.message({data:{type:'GET_APP_VERSION'},source:null}));
 });

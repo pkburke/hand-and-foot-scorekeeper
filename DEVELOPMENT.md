@@ -75,4 +75,4 @@ Existing v3.3 installations need one ordinary reload or reopen to receive the up
 
 Layouts follow browser text sizing and reflow with enlarged text. Controls provide at least 44 × 44 CSS-pixel targets. Scoring controls have field descriptions and named groups; the round table has headers and a caption. Screen navigation moves focus to its heading, counter buttons retain focus during updates, and dialogs contain keyboard focus and restore it on cancellation. Real iPhone VoiceOver, software-keyboard, and text-setting acceptance checks remain in [TESTING.md](TESTING.md).
 
-The favicon and PNG icons use the H&F reference artwork with its surrounding white margin removed. `icons/icon.svg` embeds raster artwork rather than a vector trace.
+The original H&F PNG artwork remains available for ordinary installations and Apple touch icons. The header and favicon use a compact, path-based SVG traced from the approved monogram, with less small-scale detail. A separate, opaque maskable export keeps the mark inside the guaranteed safe zone. See [icons/README.md](icons/README.md) for asset roles, colors, and export details.
